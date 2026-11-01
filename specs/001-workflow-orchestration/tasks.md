@@ -97,37 +97,37 @@
 
 ### User Story 1 Tasks
 
-- [ ] T030 [US1] Create example workflow: src/workflows/login_workflow.py (LoginWorkflow class extending Workflow base)
-  - [ ] @step for navigate to login page
-  - [ ] @step for fill username
-  - [ ] @step for fill password
-  - [ ] @step for click submit
-  - [ ] @step for wait for dashboard
-  - [ ] run() method orchestrating all steps
-  - [ ] Error handling for 401/403
+- [x] T030 [US1] Create example workflow: src/workflows/login_workflow.py (LoginWorkflow class extending Workflow base)
+  - [x] @step for navigate to login page
+  - [x] @step for fill username
+  - [x] @step for fill password
+  - [x] @step for click submit
+  - [x] @step for wait for dashboard
+  - [x] run() method orchestrating all steps
+  - [x] Error handling for 401/403
 
-- [ ] T031 [US1] Create CLI entry point src/cli/workflow_runner.py: Main entry point to execute workflows
-  - [ ] Accept workflow_type, input_params as JSON, output format (json/text)
-  - [ ] Instantiate Workflow subclass
-  - [ ] Call run() with params
-  - [ ] Capture output, logs, and execution state
-  - [ ] Return formatted result
-  - [ ] Exit code: 0 on success, non-zero on failure
+- [x] T031 [US1] Create CLI entry point src/cli/workflow_runner.py: Main entry point to execute workflows
+  - [x] Accept workflow_type, input_params as JSON, output format (json/text)
+  - [x] Instantiate Workflow subclass
+  - [x] Call run() with params
+  - [x] Capture output, logs, and execution state
+  - [x] Return formatted result
+  - [x] Exit code: 0 on success, non-zero on failure
 
-- [ ] T032 [US1] [P] Create tests/workflows/unit/test_login_workflow.py: Unit tests for LoginWorkflow logic (mock Playwright page)
-  - [ ] Test step sequence
-  - [ ] Test input validation
-  - [ ] Test error handling (invalid credentials, network timeout)
+- [x] T032 [US1] [P] Create tests/workflows/unit/test_login_workflow.py: Unit tests for LoginWorkflow logic (mock Playwright page)
+  - [x] Test step sequence
+  - [x] Test input validation
+  - [x] Test error handling (invalid credentials, network timeout)
 
-- [ ] T033 [US1] Create tests/fixtures/mock_page.py: Mock Playwright page object for testing without browser
+- [x] T033 [US1] Create tests/fixtures/mock_page.py: Mock Playwright page object for testing without browser
 
-- [ ] T034 [US1] Create tests/fixtures/mock_web_app.py: Mock web server for E2E testing (returns login form, validates credentials)
+- [x] T034 [US1] Create tests/fixtures/mock_web_app.py: Mock web server for E2E testing (returns login form, validates credentials)
 
 - [ ] T035 [US1] [P] Create tests/workflows/integration/test_login_workflow_integration.py: Integration test LoginWorkflow with mock server (no real browser)
 
 - [ ] T036 [US1] Create documentation: docs/workflow-examples/login_workflow.md with step-by-step explanation and usage examples
 
-- [ ] T037 [US1] Create tests/quickstart_scenarios/test_scenario_a_happy_path.py: Scenario A from quickstart.md (simple workflow, verify completion in <30s)
+- [x] T037 [US1] Create tests/quickstart_scenarios/test_scenario_a_happy_path.py: Scenario A from quickstart.md (simple workflow, verify completion in <30s)
 
 **Independent Test Criteria for US1**:
 - LoginWorkflow instantiates, runs, completes successfully with structured output

@@ -83,7 +83,7 @@ def step(
                 if workflow:
                     workflow.logger.info(
                         f"Step started: {step_name}",
-                        step_name=step_name,
+                        extra={"extra_fields": {"step_name": step_name}},
                     )
                     await workflow.on_step_start(step_name, 0)
 
@@ -100,8 +100,7 @@ def step(
                     if workflow:
                         workflow.logger.info(
                             f"Step completed: {step_name}",
-                            step_name=step_name,
-                            output=result,
+                            extra={"extra_fields": {"step_name": step_name}},
                         )
                         await workflow.on_step_complete(step_name, result)
 
@@ -111,8 +110,7 @@ def step(
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (permanent): {step_name}",
-                            step_name=step_name,
-                            error=str(e),
+                            extra={"extra_fields": {"step_name": step_name}},
                         )
                         await workflow.on_step_error(step_name, e)
                     raise
@@ -121,8 +119,7 @@ def step(
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (transient exhausted): {step_name}",
-                            step_name=step_name,
-                            error=str(e),
+                            extra={"extra_fields": {"step_name": step_name}},
                         )
                         await workflow.on_step_error(step_name, e)
                     raise
@@ -131,8 +128,7 @@ def step(
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (unexpected): {step_name}",
-                            step_name=step_name,
-                            error=str(e),
+                            extra={"extra_fields": {"step_name": step_name}},
                         )
                         await workflow.on_step_error(step_name, e)
                     raise WorkflowError(
@@ -153,7 +149,7 @@ def step(
                 if workflow:
                     workflow.logger.info(
                         f"Step started: {step_name}",
-                        step_name=step_name,
+                        extra={"extra_fields": {"step_name": step_name}},
                     )
 
                 try:
@@ -169,8 +165,7 @@ def step(
                     if workflow:
                         workflow.logger.info(
                             f"Step completed: {step_name}",
-                            step_name=step_name,
-                            output=result,
+                            extra={"extra_fields": {"step_name": step_name}},
                         )
 
                     return result
@@ -179,8 +174,7 @@ def step(
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (permanent): {step_name}",
-                            step_name=step_name,
-                            error=str(e),
+                            extra={"extra_fields": {"step_name": step_name}},
                         )
                     raise
 
@@ -188,8 +182,7 @@ def step(
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (transient exhausted): {step_name}",
-                            step_name=step_name,
-                            error=str(e),
+                            extra={"extra_fields": {"step_name": step_name}},
                         )
                     raise
 
@@ -197,8 +190,7 @@ def step(
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (unexpected): {step_name}",
-                            step_name=step_name,
-                            error=str(e),
+                            extra={"extra_fields": {"step_name": step_name}},
                         )
                     raise WorkflowError(
                         f"Step {step_name} failed: {e}"
