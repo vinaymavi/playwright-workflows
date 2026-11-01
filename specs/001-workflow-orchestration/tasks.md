@@ -147,25 +147,25 @@
 
 ### User Story 2 Tasks
 
-- [ ] T038 [US2] Enhance LoginWorkflow (src/workflows/login_workflow.py) to include checkpoint before submit:
-  - [ ] Add checkpoint step with question: "Ready to submit login?"
-  - [ ] Accept agent decision: {value: "proceed"} or {value: "cancel"}
-  - [ ] Resume logic: if "proceed" → click submit; if "cancel" → raise WorkflowCancelled
+- [x] T038 [US2] Enhance LoginWorkflow (src/workflows/login_workflow.py) to include checkpoint before submit:
+  - [x] Add checkpoint step with question: "Ready to submit login?"
+  - [x] Accept agent decision: {value: "proceed"} or {value: "cancel"}
+  - [x] Resume logic: if "proceed" → click submit; if "cancel" → raise WorkflowCancelled
 
-- [ ] T039 [US2] Create src/framework/checkpoint_store.py: Persist pending checkpoints to JSON for quick lookup and query
+- [x] T039 [US2] Create src/framework/checkpoint_store.py: Persist pending checkpoints to JSON for quick lookup and query
 
-- [ ] T040 [US2] [P] Create tests/framework/unit/test_checkpoint_store.py: Test checkpoint save/load from file
+- [x] T040 [US2] [P] Create tests/framework/unit/test_checkpoint_store.py: Test checkpoint save/load from file
 
-- [ ] T041 [US2] Create tests/fixtures/mock_agent_client.py: Mock MCP agent client for testing
+- [x] T041 [US2] Create tests/fixtures/mock_agent_client.py: Mock MCP agent client for testing
 
-- [ ] T042 [US2] [P] Create tests/framework/integration/test_checkpoint_pause_resume.py: Test workflow pause at checkpoint, resume with decision, verify state preserved
-  - [ ] Start workflow
-  - [ ] Hit checkpoint, verify state saved and workflow paused
-  - [ ] Resolve checkpoint with decision
-  - [ ] Resume, verify state loaded and execution continues
-  - [ ] Verify final result matches expected flow
+- [x] T042 [US2] [P] Create tests/framework/integration/test_checkpoint_pause_resume.py: Test workflow pause at checkpoint, resume with decision, verify state preserved
+  - [x] Start workflow
+  - [x] Hit checkpoint, verify state saved and workflow paused
+  - [x] Resolve checkpoint with decision
+  - [x] Resume, verify state loaded and execution continues
+  - [x] Verify final result matches expected flow
 
-- [ ] T043 [US2] [P] Create tests/workflows/integration/test_login_workflow_with_checkpoint.py: LoginWorkflow with checkpoint integration test
+- [x] T043 [US2] [P] Create tests/workflows/integration/test_login_workflow_with_checkpoint.py: LoginWorkflow with checkpoint integration test
 
 - [ ] T044 [US2] Create documentation: docs/checkpoint-protocol.md
   - [ ] Explain checkpoint question/decision JSON schema
