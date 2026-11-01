@@ -73,23 +73,24 @@ from dataclasses import dataclass
 @dataclass
 class LoginInput:
     """Input parameters for LoginWorkflow."""
+    url: str               # URL of the login page to navigate to
     username: str          # Username to use for login
     password: str          # Password to use for login
-    timeout_seconds: int   # Maximum seconds to wait for each step (default: 10)
 ```
 
 ### Output: LoginOutput
 
 ```python
 from dataclasses import dataclass
+from typing import Optional
 
 @dataclass
 class LoginOutput:
     """Output from LoginWorkflow execution."""
-    success: bool          # True if login completed successfully
-    user_name: str         # Username of logged-in user (from dashboard)
-    session_id: str        # Session identifier (from cookies)
-    redirect_url: str      # URL of final page after login
+    success: bool              # True if login completed successfully
+    message: str               # Status message describing the result
+    dashboard_url: Optional[str]  # URL of the dashboard after successful login (None if failed)
+    session_id: Optional[str]     # Session identifier from cookies (None if login failed)
 ```
 
 ## Usage Examples
@@ -99,27 +100,71 @@ class LoginOutput:
 ```python
 import asyncio
 from src.workflows.login_workflow import LoginWorkflow, LoginInput
+from playwright.async_api import async_playwright
 
 async def main():
     # Create workflow instance
     workflow = LoginWorkflow(base_url="https://app.example.com")
     
-    # Set input parameters
-    workflow.input = LoginInput(
+    # Initialize browser and page (in real usage, done by framework)
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page()
+        workflow._page = page
+        
+        # Create input parameters
+        input_data = LoginInput(
+            url="https://app.example.com/login",
+            username="user@example.com",
+            password="secure_password"
+        )
+        
+        # Run the workflow
+        result = await workflow.run(input_data)
+        
+        # Handle results
+        if result.success:
+            print(f"Login successful!")
+            print(f"Dashboard URL: {result.dashboard_url}")
+            print(f"Session ID: {result.session_id}")
+        else:
+            print(f"Login failed: {result.message}")
+        
+        await browser.close()
+
+asyncio.run(main())
+```
+
+### Using with Framework ExecutionContext
+
+```python
+import asyncio
+from src.framework.execution_context import ExecutionContext
+from src.workflows.login_workflow import LoginWorkflow, LoginInput
+
+async def main():
+    # Create execution context (handles browser lifecycle)
+    context = ExecutionContext()
+    
+    # Create workflow
+    workflow = LoginWorkflow(base_url="https://app.example.com")
+    
+    # Initialize browser through context
+    await context.initialize()
+    workflow._page = context.page
+    
+    # Run workflow
+    input_data = LoginInput(
+        url="https://app.example.com/login",
         username="user@example.com",
-        password="secure_password",
-        timeout_seconds=10
+        password="secure_password"
     )
     
-    # Run the workflow
-    result = await workflow.run()
+    result = await workflow.run(input_data)
+    print(f"Result: {result}")
     
-    # Handle results
-    if result.success:
-        print(f"Login successful! User: {result.user_name}")
-        print(f"Session ID: {result.session_id}")
-    else:
-        print("Login failed!")
+    # Cleanup
+    await context.cleanup()
 
 asyncio.run(main())
 ```
@@ -127,11 +172,11 @@ asyncio.run(main())
 ### Using with CLI
 
 ```bash
-# Run the workflow via CLI
+# Run the workflow via CLI (when available)
 python3 -m src.cli.workflow_runner \
   --workflow-type LoginWorkflow \
   --base-url "https://app.example.com" \
-  --input '{"username": "user@example.com", "password": "secure_password", "timeout_seconds": 10}' \
+  --input '{"url": "https://app.example.com/login", "username": "user@example.com", "password": "secure_password"}' \
   --output-format json
 ```
 
@@ -148,9 +193,9 @@ When running within the MCP Server context, the workflow can be invoked through 
     "workflow_type": "LoginWorkflow",
     "base_url": "https://app.example.com",
     "input": {
+      "url": "https://app.example.com/login",
       "username": "user@example.com",
-      "password": "secure_password",
-      "timeout_seconds": 10
+      "password": "secure_password"
     }
   },
   "id": "req-001"
@@ -161,193 +206,32 @@ When running within the MCP Server context, the workflow can be invoked through 
 
 The LoginWorkflow handles various error scenarios:
 
-### Transient Errors (Auto-Retry)
-- Network timeout during page load
-- Temporary server unavailability (5xx errors)
-- Browser connection issues
-
-These errors trigger automatic retry with exponential backoff (default: 3 attempts).
-
-### Permanent Errors (Checkpoint Escalation)
-- Invalid credentials (401 response)
-- Page element not found (field missing from form)
-- Page load timeout after retries
-- Session expired during execution
-
-These errors escalate to a checkpoint for human/agent decision.
-
-### Error Recovery
-
-If an error occurs during workflow execution:
-
-1. **Transient errors**: Framework automatically retries up to 3 times with exponential backoff
-2. **Permanent errors**: Framework pauses execution and creates a checkpoint
-3. **Checkpoint resolution**: Human/agent reviews error and decides to:
-   - **Proceed**: Retry from checkpoint (useful for network issues)
-   - **Cancel**: Cancel workflow execution
-   - **Modify input**: Provide corrected credentials and retry
-
-## State Management and Persistence
-
-### Execution State
-
-The workflow automatically saves its execution state after each step:
-
-```
-data/executions/{execution_id}.json
-```
-
-This includes:
-- Current execution status (running, paused, completed, failed)
-- All completed steps and their outputs
-- Any active checkpoints
-- Timing information
-- Error details
-
-### Resume from Checkpoint
-
-If a workflow is paused at a checkpoint:
-
-1. User/agent resolves the checkpoint with a decision
-2. Framework reloads execution state from disk
-3. Workflow resumes from the paused step
-4. All previous step outputs are available for reference
-
-Example resumption:
-
-```python
-# Resolve the checkpoint
-workflow.resolve_checkpoint(execution_id, decision={
-    "value": "proceed"  # or "cancel", or provide new input
-})
-
-# Workflow automatically resumes from where it paused
-```
-
-## Logging
-
-All workflow execution is logged to:
-
-```
-data/logs/{execution_id}.log
-```
-
-Logs are formatted as JSON lines (one JSON object per line) for easy parsing and analysis:
-
-```json
-{"timestamp": "2024-11-02T12:00:00.000Z", "level": "INFO", "step": "navigate_to_login", "message": "Starting step", "action": "navigate"}
-{"timestamp": "2024-11-02T12:00:01.000Z", "level": "INFO", "step": "navigate_to_login", "message": "Step completed", "duration_ms": 1200}
-{"timestamp": "2024-11-02T12:00:02.000Z", "level": "INFO", "step": "fill_username", "message": "Starting step"}
-```
+- **Page Load Failure**: Raises `PermanentError` if the login page doesn't load
+- **Invalid Credentials**: Raises `PermanentError` if credentials are rejected (401 response)
+- **Form Not Found**: Raises `PermanentError` if form elements are not found
+- **Timeout**: Raises `PermanentError` if dashboard doesn't appear within timeout
+- **Transient Network Errors**: Raises `TransientError` for temporary network issues (can be retried)
 
 ## Testing
 
-The LoginWorkflow includes comprehensive unit and integration tests:
+The LoginWorkflow includes comprehensive tests:
 
-### Unit Tests
-- **File**: `tests/workflows/unit/test_login_workflow.py`
-- **Coverage**: 
-  - Step execution order
-  - Input validation
-  - Error handling scenarios
-  - Retry behavior
-  - State persistence
+- **Unit Tests**: Test individual steps with mocked browser operations
+- **Integration Tests**: Test framework integration including state persistence and concurrent execution
+- **Test Data**: MockPage fixture simulates browser operations without requiring real browser
 
-### Integration Tests
-- **File**: `tests/workflows/integration/test_login_workflow_integration.py`
-- **Coverage**:
-  - Full workflow with mock server
-  - Concurrent workflow execution
-  - State persistence and recovery
-  - End-to-end error scenarios
-
-### Running Tests
+Run tests with:
 
 ```bash
-# Run only LoginWorkflow tests
-uv run pytest tests/workflows/unit/test_login_workflow.py -v
+# Unit tests
+pytest tests/workflows/unit/test_login_workflow.py -v
 
-# Run integration tests
-uv run pytest tests/workflows/integration/test_login_workflow_integration.py -v
+# Integration tests
+pytest tests/workflows/integration/test_login_workflow_integration.py -v
 
-# Run all tests with coverage
-uv run pytest tests/ --cov=src --cov-report=html
+# All workflow tests
+pytest tests/workflows/ -v
 ```
-
-## Advanced Topics
-
-### Customizing the Workflow
-
-To create a similar workflow for a different application:
-
-1. Extend the `Workflow` base class
-2. Define your own `Input` and `Output` dataclasses
-3. Implement workflow steps using the `@step` decorator
-4. Implement the `run()` method to orchestrate steps
-
-```python
-from src.framework.workflow import Workflow, step
-from dataclasses import dataclass
-
-@dataclass
-class CustomInput:
-    # Your input fields
-    pass
-
-@dataclass
-class CustomOutput:
-    # Your output fields
-    pass
-
-class CustomWorkflow(Workflow):
-    def __init__(self, base_url: str):
-        super().__init__("CustomWorkflow", base_url)
-    
-    @step
-    async def step1(self):
-        # Implement step logic
-        pass
-    
-    async def run(self) -> CustomOutput:
-        # Orchestrate steps
-        await self.step1()
-        # Return output
-        return CustomOutput()
-```
-
-### Adding Checkpoints
-
-To add a human-in-the-loop checkpoint during workflow execution:
-
-```python
-@step
-async def approve_action(self):
-    """Wait for human approval before proceeding."""
-    decision = await self.checkpoint(
-        question="Approve this action?",
-        options=["proceed", "cancel"]
-    )
-    
-    if decision["value"] == "cancel":
-        raise WorkflowCancelled("User cancelled the workflow")
-```
-
-## Troubleshooting
-
-### "Selector not found" Error
-- Verify the web page has fully loaded before the step executes
-- Check that element selectors match the current page structure
-- Increase the `timeout_seconds` parameter
-
-### "Invalid credentials" Error
-- Verify username and password are correct
-- Check if the target application is available
-- Verify the login form structure hasn't changed
-
-### "Workflow timeout" Error
-- Increase the `timeout_seconds` parameter in LoginInput
-- Check network connectivity to the target application
-- Verify browser process is running correctly
 
 ## Performance Considerations
 

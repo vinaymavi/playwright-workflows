@@ -123,9 +123,9 @@
 
 - [x] T034 [US1] Create tests/fixtures/mock_web_app.py: Mock web server for E2E testing (returns login form, validates credentials)
 
-- [ ] T035 [US1] [P] Create tests/workflows/integration/test_login_workflow_integration.py: Integration test LoginWorkflow with mock server (no real browser)
+- [x] T035 [US1] [P] Create tests/workflows/integration/test_login_workflow_integration.py: Integration test LoginWorkflow with mock server (no real browser)
 
-- [ ] T036 [US1] Create documentation: docs/workflow-examples/login_workflow.md with step-by-step explanation and usage examples
+- [x] T036 [US1] Create documentation: docs/workflow-examples/login_workflow.md with step-by-step explanation and usage examples
 
 - [x] T037 [US1] Create tests/quickstart_scenarios/test_scenario_a_happy_path.py: Scenario A from quickstart.md (simple workflow, verify completion in <30s)
 
