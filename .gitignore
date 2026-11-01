@@ -25,6 +25,11 @@ venv/
 ENV/
 env/
 .venv
+.env
+
+# uv package manager
+.uv_cache/
+.venv-*
 
 # IDE
 .vscode/

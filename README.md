@@ -67,7 +67,31 @@ Target Web Application
 
 ## 🚀 Quick Start
 
-### Installation
+### Installation with `uv` (Recommended)
+
+**`uv` is 10-100x faster than pip!** See [UV_SETUP.md](./UV_SETUP.md) for complete guide.
+
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and setup project
+git clone https://github.com/vinaymavi/playwright-workflows.git
+cd playwright-workflows
+
+# Create virtual environment and install dependencies
+uv sync --all-groups
+
+# Activate virtual environment
+source .venv/bin/activate  # macOS/Linux
+# OR
+.venv\Scripts\activate  # Windows
+
+# Verify installation
+pytest tests/ -v
+```
+
+### Installation with `pip` (Legacy)
 
 ```bash
 # Create and activate virtual environment
@@ -80,6 +104,8 @@ pip install -e .
 # Verify installation
 python -m pytest tests/ -v
 ```
+
+**Note:** `pip` is significantly slower than `uv`. We recommend using `uv` for all new development.
 
 ### Create a Simple Workflow
 
