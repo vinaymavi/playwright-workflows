@@ -23,29 +23,29 @@
 
 ### Setup Tasks
 
-- [ ] T001 Create project directory structure per plan.md (src/framework, src/workflows, src/mcp_server, src/shared_steps, src/utils, tests/, data/)
+- [x] T001 Create project directory structure per plan.md (src/framework, src/workflows, src/mcp_server, src/shared_steps, src/utils, tests/, data/)
 
-- [ ] T002 Create pyproject.toml with dependencies: playwright, python-mcp or anthropic-mcp, pydantic, cryptography, pytest, pytest-asyncio, jsonschema
+- [x] T002 Create pyproject.toml with dependencies: playwright, python-mcp or anthropic-mcp, pydantic, cryptography, pytest, pytest-asyncio, jsonschema
 
-- [ ] T003 Create Python virtual environment and install dependencies: `python3 -m venv venv && source venv/bin/activate && pip install -r pyproject.toml`
+- [x] T003 Create Python virtual environment and install dependencies: `python3 -m venv venv && source venv/bin/activate && pip install -r pyproject.toml`
 
-- [ ] T004 Create src/__init__.py and src/framework/__init__.py (package initialization files)
+- [x] T004 Create src/__init__.py and src/framework/__init__.py (package initialization files)
 
-- [ ] T005 Create tests/__init__.py, tests/framework/__init__.py, tests/framework/unit/__init__.py, tests/framework/integration/__init__.py
+- [x] T005 Create tests/__init__.py, tests/framework/__init__.py, tests/framework/unit/__init__.py, tests/framework/integration/__init__.py
 
-- [ ] T006 Create .gitignore for Python projects (venv/, __pycache__/, *.pyc, .pytest_cache/, data/executions/*, data/logs/*, data/artifacts/*, data/credentials/*)
+- [x] T006 Create .gitignore for Python projects (venv/, __pycache__/, *.pyc, .pytest_cache/, data/executions/*, data/logs/*, data/artifacts/*, data/credentials/*)
 
-- [ ] T007 Create data/ directory structure: mkdir -p data/executions data/logs data/artifacts data/credentials
+- [x] T007 Create data/ directory structure: mkdir -p data/executions data/logs data/artifacts data/credentials
 
-- [ ] T008 Create src/utils/logging.py for structured JSON logging (see research.md for logging strategy)
+- [x] T008 Create src/utils/logging.py for structured JSON logging (see research.md for logging strategy)
 
-- [ ] T009 Create src/utils/file_locking.py for fcntl-based file locks with atomic writes (MVP: file-based state)
+- [x] T009 Create src/utils/file_locking.py for fcntl-based file locks with atomic writes (MVP: file-based state)
 
-- [ ] T010 Create src/utils/credential_manager.py for AES-256-GCM credential encryption per research.md
+- [x] T010 Create src/utils/credential_manager.py for AES-256-GCM credential encryption per research.md
 
-- [ ] T011 Create pytest.ini configuration for test discovery and asyncio mode
+- [x] T011 Create pytest.ini configuration for test discovery and asyncio mode
 
-- [ ] T012 Create README.md with project overview, quick start, and architecture diagram reference
+- [x] T012 Create README.md with project overview, quick start, and architecture diagram reference
 
 ---
 
