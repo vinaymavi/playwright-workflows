@@ -93,3 +93,27 @@ class PermanentError(StepError):
     def __init__(self, step_name: str, message: str, cause: Optional[Exception] = None):
         """Initialize permanent error."""
         super().__init__(step_name, message, "permanent", cause)
+
+
+class WorkflowStateError(WorkflowError):
+    """Raised when workflow state machine encounters invalid transition."""
+
+    def __init__(
+        self,
+        message: str = "Invalid state transition",
+        current_state: Optional[str] = None,
+        requested_state: Optional[str] = None,
+        cause: Optional[Exception] = None,
+    ):
+        """
+        Initialize state error.
+
+        Args:
+            message: Description of invalid transition
+            current_state: Current execution state
+            requested_state: State transition that was attempted
+            cause: Underlying exception
+        """
+        self.current_state = current_state
+        self.requested_state = requested_state
+        super().__init__(message, cause=cause)

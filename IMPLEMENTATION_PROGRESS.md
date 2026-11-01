@@ -13,9 +13,9 @@
 | 1 | Design | ✅ Complete | 2 days | spec.md, plan.md, data-model.md, contracts/ |
 | 2 | Tasks | ✅ Complete | 1 day | tasks.md (114 tasks) |
 | **3** | **Implementation** | **🟡 In Progress** | **4-6 wks** | **T001-T114** |
-| 3.1 | Setup | 🟡 In Progress | 1-2 days | T001-T012 |
-| 3.2 | Framework Core | ⬜ Pending | 1-2 wks | T013-T029 |
-| 3.3-3.9 | User Stories | ⬜ Pending | 2-3 wks | T030-T098 (parallel) |
+| 3.1 | Setup | ✅ Complete | 1-2 days | T001-T012 |
+| 3.2 | Framework Core | ✅ Complete | 1-2 wks | T013-T029 |
+| 3.3-3.9 | User Stories | 🟡 Next | 2-3 wks | T030-T098 (parallel) |
 | 3.10 | Polish & Docs | ⬜ Pending | 1-2 wks | T099-T114 |
 
 ---

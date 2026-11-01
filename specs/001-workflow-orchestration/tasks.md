@@ -58,47 +58,33 @@
 
 ### Foundational Framework Tasks
 
-- [ ] T013 [P] Create src/framework/errors.py with exception hierarchy: WorkflowError, WorkflowCheckpointRequired, WorkflowCheckpointTimeout, WorkflowCancelled, WorkflowSessionExpired, WorkflowResourceExhausted
+- [x] T013 [P] Create src/framework/errors.py with exception hierarchy: WorkflowError, WorkflowCheckpointRequired, WorkflowCheckpointTimeout, WorkflowCancelled, WorkflowSessionExpired, WorkflowResourceExhausted
 
-- [ ] T014 [P] Create src/framework/execution.py with Execution class: manages execution state machine (pending → running → paused → completed/failed), state persistence to JSON, status queries
+- [x] T014 [P] Create src/framework/execution.py with Execution class: manages execution state machine (pending → running → paused → completed/failed), state persistence to JSON, status queries
 
-- [ ] T015 [P] Create src/framework/checkpoint.py with Checkpoint class: structured JSON question/decision protocol, timeout handling (soft 2min + hard 5min per plan.md Q4), decision validation
+- [x] T015 [P] Create src/framework/checkpoint.py with Checkpoint class: structured JSON question/decision protocol, timeout handling (soft 2min + hard 5min per plan.md Q4), decision validation
 
-- [ ] T016 [P] Create src/framework/retry_handler.py: Classify errors (transient vs permanent per plan.md Q3), auto-retry transient errors (configurable max_retries, exponential backoff), escalate permanent errors to checkpoint
+- [x] T016 [P] Create src/framework/retry_handler.py: Classify errors (transient vs permanent per plan.md Q3), auto-retry transient errors (configurable max_retries, exponential backoff), escalate permanent errors to checkpoint
 
-- [ ] T017 [P] Create src/framework/step.py with Step decorator (@step): captures step execution, logs start/complete, handles retry, populates step output on success, populates step error on failure
+- [x] T017 [P] Create src/framework/step.py with Step decorator (@step): captures step execution, logs start/complete, handles retry, populates step output on success, populates step error on failure
 
-- [ ] T018 Create src/framework/session_manager.py: Manage browser context lifecycle, persist session cookies/storage, detect 401/403 errors, trigger re-auth per plan.md Q5 (hybrid recovery strategy)
+- [x] T018 Create src/framework/session_manager.py: Manage browser context lifecycle, persist session cookies/storage, detect 401/403 errors, trigger re-auth per plan.md Q5 (hybrid recovery strategy)
 
-- [ ] T019 [P] Create src/framework/state_manager.py: Load/save execution state to data/executions/{execution_id}.json using file locking (fcntl.flock), atomic writes (temp → rename), validation via schema
+- [x] T019 [P] Create src/framework/state_manager.py: Load/save execution state to data/executions/{execution_id}.json using file locking (fcntl.flock), atomic writes (temp → rename), validation via schema
 
-- [ ] T020 [P] Create src/framework/workflow.py - Base Workflow class with:
-  - [ ] Constructor: execution_id, base_url, max_retries, timeout_seconds, logger
-  - [ ] Abstract run() method
-  - [ ] Playwright API wrappers: navigate(), click(), fill(), select(), get_text(), get_attribute(), wait_for_selector(), take_screenshot(), export_to_pdf() per contracts/workflow_api.md
-  - [ ] State API: get_state(), set_state(), get_all_state()
-  - [ ] Checkpoint API: checkpoint() method with question/timeout/allow_skip
-  - [ ] Lifecycle hooks: on_start(), on_step_start(), on_step_complete(), on_step_error(), on_checkpoint(), on_complete(), on_error()
-  - [ ] Logging: structured logs via logger instance per src/utils/logging.py
-  - [ ] Error handling: catch WorkflowError, log, and re-raise with context
+- [x] T023 Create tests/framework/unit/test_errors.py: Unit tests for exception hierarchy and custom attributes
 
-- [ ] T021 [P] Create src/framework/decorators.py: @step decorator (wraps methods, enables retry, logging, error classification)
+- [x] T024 [P] Create tests/framework/unit/test_execution_state_machine.py: Test Execution state transitions (pending→running→paused→completed/failed), verify state persistence to JSON, verify lock mechanism
 
-- [ ] T022 Create src/framework/__init__.py: Export public API (Workflow, @step, errors, checkpoint protocol)
+- [x] T025 [P] Create tests/framework/unit/test_checkpoint.py: Test Checkpoint question validation, decision validation, timeout handling (mock time.sleep), JSON serialization
 
-- [ ] T023 Create tests/framework/unit/test_errors.py: Unit tests for exception hierarchy and custom attributes
+- [x] T026 [P] Create tests/framework/unit/test_retry_handler.py: Test error classification (transient vs permanent), auto-retry logic with backoff, escalation to checkpoint
 
-- [ ] T024 [P] Create tests/framework/unit/test_execution_state_machine.py: Test Execution state transitions (pending→running→paused→completed/failed), verify state persistence to JSON, verify lock mechanism
+- [x] T027 [P] Create tests/framework/unit/test_step_decorator.py: Test @step decorator captures execution, logs, retries, handles errors
 
-- [ ] T025 [P] Create tests/framework/unit/test_checkpoint.py: Test Checkpoint question validation, decision validation, timeout handling (mock time.sleep), JSON serialization
+- [x] T028 Create tests/framework/unit/test_state_manager.py: Test save/load execution state from JSON file, file locking (concurrent writes), atomic write guarantee
 
-- [ ] T026 [P] Create tests/framework/unit/test_retry_handler.py: Test error classification (transient vs permanent), auto-retry logic with backoff, escalation to checkpoint
-
-- [ ] T027 [P] Create tests/framework/unit/test_step_decorator.py: Test @step decorator captures execution, logs, retries, handles errors
-
-- [ ] T028 Create tests/framework/unit/test_state_manager.py: Test save/load execution state from JSON file, file locking (concurrent writes), atomic write guarantee
-
-- [ ] T029 [P] Create tests/framework/integration/test_execution_flow.py: Workflow → Execution → Step → Checkpoint flow (no browser), mock page object, verify state persistence and resumption
+- [x] T029 [P] Create tests/framework/integration/test_execution_flow.py: Workflow → Execution → Step → Checkpoint flow (no browser), mock page object, verify state persistence and resumption
 
 ---
 
