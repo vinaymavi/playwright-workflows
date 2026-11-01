@@ -1,0 +1,87 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "playwright-workflows"
+version = "0.1.0"
+description = "Playwright-based workflow orchestration framework with human-in-loop checkpoints, parallel execution, and extensibility"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Vinay Mavi", email = "vinaymavi@example.com"},
+]
+
+dependencies = [
+    "playwright>=1.40.0",
+    "pydantic>=2.0.0",
+    "pydantic-core>=2.0.0",
+    "cryptography>=41.0.0",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "jsonschema>=4.19.0",
+    "python-dotenv>=1.0.0",
+    "mcp>=0.1.0",  # Anthropic MCP SDK
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "flake8>=6.0.0",
+    "mypy>=1.5.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.11.0",
+]
+
+test = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-mock>=3.11.0",
+    "pytest-cov>=4.1.0",
+]
+
+[project.entry-points."playwright.workflows"]
+# Workflows registered here for auto-discovery
+# Example: login_workflow = "src.workflows.login:LoginWorkflow"
+
+[project.entry-points."playwright.actions"]
+# Custom actions registered here for auto-discovery
+# Example: fill_form = "src.shared_steps.form_actions:FillFormAction"
+
+[tool.setuptools]
+packages = ["src"]
+
+[tool.setuptools.package-data]
+src = ["**/*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312']
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+minversion = "7.4"
+addopts = "-ra -q --strict-markers --tb=short"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+asyncio_mode = "auto"
+markers = [
+    "unit: Unit tests (no browser/MCP)",
+    "integration: Integration tests (with mocks)",
+    "e2e: End-to-end tests (with real browser)",
+    "performance: Performance/benchmark tests",
+    "slow: Slow tests (>1s)",
+]

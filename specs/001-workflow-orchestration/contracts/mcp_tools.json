@@ -1,0 +1,313 @@
+{
+  "schema_version": "1.0",
+  "mcp_server": "WorkflowOrchestrator",
+  "description": "MCP Server exposing Playwright workflow orchestration tools",
+  "tools": [
+    {
+      "name": "start_workflow",
+      "description": "Start a new Playwright workflow execution",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "workflow_type": {
+            "type": "string",
+            "description": "Type/name of workflow to execute (e.g., 'login_workflow', 'form_filling')"
+          },
+          "input_params": {
+            "type": "object",
+            "description": "Workflow-specific input parameters (JSON object)",
+            "additionalProperties": true
+          },
+          "max_retries": {
+            "type": "integer",
+            "description": "Max retries for transient errors (default 3)",
+            "default": 3,
+            "minimum": 0,
+            "maximum": 10
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "description": "Hard timeout for entire workflow execution (default 3600)",
+            "default": 3600,
+            "minimum": 10
+          }
+        },
+        "required": ["workflow_type"],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "execution_id": {
+            "type": "string",
+            "description": "UUID v4 identifier for this workflow execution"
+          },
+          "workflow_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "running", "paused", "completed", "failed"],
+            "description": "Current execution status"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO8601 timestamp when execution was created"
+          }
+        },
+        "required": ["execution_id", "status", "created_at"]
+      }
+    },
+    {
+      "name": "resolve_checkpoint",
+      "description": "Provide agent/human decision to resume a paused workflow from checkpoint",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "execution_id": {
+            "type": "string",
+            "description": "UUID v4 of the execution to resume"
+          },
+          "checkpoint_id": {
+            "type": "string",
+            "description": "UUID v4 of the checkpoint to resolve"
+          },
+          "decision": {
+            "type": "object",
+            "description": "Agent's decision response (structure depends on checkpoint question)",
+            "additionalProperties": true
+          },
+          "agent_id": {
+            "type": "string",
+            "description": "Identifier of agent making the decision (for audit)",
+            "default": "unknown"
+          }
+        },
+        "required": ["execution_id", "checkpoint_id", "decision"],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "execution_id": {
+            "type": "string"
+          },
+          "checkpoint_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "description": "Updated execution status (usually 'running')"
+          },
+          "resolved_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": ["execution_id", "checkpoint_id", "status"]
+      }
+    },
+    {
+      "name": "get_execution_status",
+      "description": "Get current status and details of a workflow execution",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "execution_id": {
+            "type": "string",
+            "description": "UUID v4 of execution to query"
+          }
+        },
+        "required": ["execution_id"],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "execution_id": {
+            "type": "string"
+          },
+          "workflow_type": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "running", "paused", "completed", "failed"]
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "ended_at": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "completed_steps": {
+            "type": "integer",
+            "description": "Number of completed steps"
+          },
+          "total_steps": {
+            "type": "integer",
+            "description": "Total steps in workflow"
+          },
+          "current_step_name": {
+            "type": ["string", "null"],
+            "description": "Name of step currently executing (null if not running)"
+          },
+          "pending_checkpoint": {
+            "type": ["object", "null"],
+            "description": "Active checkpoint awaiting decision (null if not paused)",
+            "properties": {
+              "checkpoint_id": {"type": "string"},
+              "checkpoint_index": {"type": "integer"},
+              "question": {"type": "object"},
+              "timeout_seconds": {"type": "integer"},
+              "time_remaining_seconds": {"type": "integer"}
+            }
+          },
+          "error": {
+            "type": ["object", "null"],
+            "description": "Error details if status is 'failed'"
+          }
+        },
+        "required": ["execution_id", "workflow_type", "status", "started_at"]
+      }
+    },
+    {
+      "name": "get_execution_logs",
+      "description": "Retrieve structured JSON logs for a workflow execution",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "execution_id": {
+            "type": "string",
+            "description": "UUID v4 of execution"
+          },
+          "event_type": {
+            "type": ["string", "null"],
+            "description": "Optional filter by event type (e.g., 'step_completed', 'checkpoint_created')",
+            "enum": ["execution_started", "step_started", "step_completed", "step_error", "checkpoint_created", "checkpoint_resolved", "checkpoint_timeout", "execution_completed", "execution_failed", "session_recovered", null]
+          },
+          "level": {
+            "type": ["string", "null"],
+            "description": "Optional filter by log level",
+            "enum": ["info", "warning", "error", "debug", null]
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum number of logs to return (default 100)",
+            "default": 100,
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Offset for pagination (default 0)",
+            "default": 0,
+            "minimum": 0
+          }
+        },
+        "required": ["execution_id"],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "execution_id": {
+            "type": "string"
+          },
+          "total_logs": {
+            "type": "integer",
+            "description": "Total number of logs matching criteria"
+          },
+          "returned_logs": {
+            "type": "integer",
+            "description": "Number of logs in this response"
+          },
+          "logs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "log_id": {"type": "string"},
+                "timestamp": {"type": "string", "format": "date-time"},
+                "event_type": {"type": "string"},
+                "level": {"type": "string"},
+                "message": {"type": "string"},
+                "step_id": {"type": ["string", "null"]},
+                "checkpoint_id": {"type": ["string", "null"]},
+                "context": {"type": "object"}
+              },
+              "required": ["log_id", "timestamp", "event_type", "level", "message"]
+            }
+          }
+        },
+        "required": ["execution_id", "total_logs", "returned_logs", "logs"]
+      }
+    }
+  ],
+  "resources": [
+    {
+      "name": "workflow://{workflow_type}",
+      "description": "Get metadata about a workflow type",
+      "uri_template": "workflow://{workflow_type}",
+      "mimeType": "application/json"
+    },
+    {
+      "name": "execution/{execution_id}",
+      "description": "Get complete execution state (including all steps and checkpoint history)",
+      "uri_template": "execution/{execution_id}",
+      "mimeType": "application/json"
+    }
+  ],
+  "notifications": [
+    {
+      "name": "checkpoint_requested",
+      "description": "Workflow has paused at a checkpoint and is requesting agent decision",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "execution_id": {"type": "string"},
+          "checkpoint_id": {"type": "string"},
+          "workflow_type": {"type": "string"},
+          "question": {"type": "object"},
+          "timeout_seconds": {"type": "integer"}
+        }
+      }
+    },
+    {
+      "name": "execution_completed",
+      "description": "Workflow execution has completed successfully",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "execution_id": {"type": "string"},
+          "workflow_type": {"type": "string"},
+          "result": {"type": "object"}
+        }
+      }
+    },
+    {
+      "name": "execution_failed",
+      "description": "Workflow execution has failed and stopped",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "execution_id": {"type": "string"},
+          "workflow_type": {"type": "string"},
+          "error": {"type": "object"}
+        }
+      }
+    }
+  ],
+  "error_codes": {
+    "WORKFLOW_NOT_FOUND": {"message": "Workflow type does not exist"},
+    "EXECUTION_NOT_FOUND": {"message": "Execution ID does not exist"},
+    "CHECKPOINT_NOT_FOUND": {"message": "Checkpoint ID does not exist"},
+    "EXECUTION_NOT_PAUSED": {"message": "Execution is not paused at a checkpoint"},
+    "INVALID_DECISION": {"message": "Decision does not match checkpoint question schema"},
+    "EXECUTION_TIMEOUT": {"message": "Execution exceeded hard timeout limit"},
+    "RESOURCE_EXHAUSTED": {"message": "Execution exceeded resource quota"}
+  }
+}
