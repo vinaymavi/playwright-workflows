@@ -12,7 +12,7 @@ from dataclasses import asdict
 from src.framework import Workflow
 from src.framework.errors import WorkflowError
 from src.workflows.login_workflow import LoginWorkflow, LoginInput
-from src.utils.logging import setup_logging
+from src.utils.logging import setup_logger
 
 
 logger = logging.getLogger(__name__)
@@ -56,8 +56,9 @@ class WorkflowRunner:
         try:
             # Setup logging
             if log_dir:
-                setup_logging(
-                    log_file=str(Path(log_dir) / f"{self.workflow_type}.log")
+                setup_logger(
+                    name=__name__,
+                    log_file=Path(log_dir) / f"{self.workflow_type}.log"
                 )
 
             # Get workflow instance

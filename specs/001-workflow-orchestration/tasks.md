@@ -216,21 +216,21 @@
   - [x] Verify file locking prevents state corruption
   - [x] Verify semaphore limits actual concurrency to 5
 
-- [ ] T051 [US3] Create src/cli/batch_runner.py: CLI to execute multiple workflows in parallel
-  - [ ] Accept JSON array of workflow specs
-  - [ ] Use concurrency_manager to run all
-  - [ ] Aggregate results and errors
-  - [ ] Return summary (N succeeded, N failed, total time)
+- [x] T051 [US3] Create src/cli/batch_runner.py: CLI to execute multiple workflows in parallel
+  - [x] Accept JSON array of workflow specs
+  - [x] Use concurrency_manager to run all
+  - [x] Aggregate results and errors
+  - [x] Return summary (N succeeded, N failed, total time)
 
-- [ ] T052 [US3] [P] Create tests/workflows/integration/test_batch_execution.py: Test batch_runner with 10 LoginWorkflows, different inputs, verify isolation
+- [x] T052 [US3] [P] Create tests/workflows/integration/test_batch_execution.py: Test batch_runner with 10 LoginWorkflows, different inputs, verify isolation
 
-- [ ] T053 [US3] [P] Create tests/quickstart_scenarios/test_scenario_d_concurrent.py: Scenario D from quickstart.md (10 workflows, max 5 concurrent, all complete, no conflicts)
+- [x] T053 [US3] [P] Create tests/quickstart_scenarios/test_scenario_d_concurrent.py: Scenario D from quickstart.md (10 workflows, max 5 concurrent, all complete, no conflicts)
 
-- [ ] T054 [US3] Create documentation: docs/concurrency-guide.md
-  - [ ] Explain execution isolation
-  - [ ] Explain resource quotas
-  - [ ] Show how to tune semaphore limit
-  - [ ] Show error handling per execution
+- [x] T054 [US3] Create documentation: docs/concurrency-guide.md
+  - [x] Explain execution isolation
+  - [x] Explain resource quotas
+  - [x] Show how to tune semaphore limit
+  - [x] Show error handling per execution
 
 **Independent Test Criteria for US3**:
 - 10 concurrent workflows complete without cross-contamination
