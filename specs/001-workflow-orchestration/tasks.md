@@ -167,11 +167,11 @@
 
 - [x] T043 [US2] [P] Create tests/workflows/integration/test_login_workflow_with_checkpoint.py: LoginWorkflow with checkpoint integration test
 
-- [ ] T044 [US2] Create documentation: docs/checkpoint-protocol.md
-  - [ ] Explain checkpoint question/decision JSON schema
-  - [ ] Show decision validation
-  - [ ] Show timeout behavior (soft + hard)
-  - [ ] Show resumption strategy
+- [x] T044 [US2] Create documentation: docs/checkpoint-protocol.md
+  - [x] Explain checkpoint question/decision JSON schema
+  - [x] Show decision validation
+  - [x] Show timeout behavior (soft + hard)
+  - [x] Show resumption strategy
 
 - [x] T045 [US2] Create tests/quickstart_scenarios/test_scenario_b_quick_resume.py: Scenario B from quickstart.md (checkpoint pause/resume ≤5min, session preserved)
 
