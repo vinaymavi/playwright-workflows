@@ -13,7 +13,10 @@ Success Criteria:
 
 import pytest
 import time
+from unittest.mock import AsyncMock, patch
 from src.workflows.login_workflow import LoginWorkflow, LoginInput
+from src.framework.execution import Execution
+from src.framework.checkpoint import CheckpointResponse, CheckpointDecision
 from tests.fixtures import MockPage
 
 
@@ -56,11 +59,24 @@ class TestScenarioAHappyPath:
         workflow = LoginWorkflow(base_url="http://localhost:8003")
         workflow._page = mock_page
         
+        # Create and set execution
+        execution = Execution(
+            execution_id=workflow.execution_id,
+            base_url=workflow.base_url,
+        )
+        workflow.set_execution(execution)
+        
+        # Mock the request_approval to auto-approve for happy path
+        async def mock_approval():
+            return CheckpointDecision(choice="proceed")
+        
+        workflow.request_approval = mock_approval
+        
         # Prepare input
         input_data = LoginInput(
             url="http://localhost:8003",
             username="testuser",
-            password="testpass"
+            password="password123"
         )
         
         # Run workflow
@@ -89,46 +105,117 @@ class TestScenarioAHappyPath:
         workflow = LoginWorkflow(base_url="http://localhost:8003")
         workflow._page = mock_page
         
+        # Create and set execution
+        execution = Execution(
+            execution_id=workflow.execution_id,
+            base_url=workflow.base_url,
+        )
+        workflow.set_execution(execution)
+        
+        # Mock the request_approval to auto-approve for happy path
+        async def mock_approval():
+            return CheckpointDecision(choice="proceed")
+        
+        workflow.request_approval = mock_approval
+        
         input_data = LoginInput(
             url="http://localhost:8003",
             username="testuser",
-            password="testpass"
+            password="password123"
         )
         
         result = await workflow.run(input_data)
         
-        # Verify all output fields
+        # Verify output structure
+        assert hasattr(result, 'success')
+        assert hasattr(result, 'session_id')
+        assert hasattr(result, 'dashboard_url')
+        assert hasattr(result, 'message')
+        
+        # Verify output values
         assert result.success is True
-        assert isinstance(result.session_id, str) and len(result.session_id) > 0
-        assert isinstance(result.message, str) and len(result.message) > 0
-        # dashboard_url can be None or string (depends on implementation)
-        assert result.dashboard_url is None or isinstance(result.dashboard_url, str)
+        assert isinstance(result.session_id, str)
+        assert len(result.session_id) > 0
+        assert isinstance(result.dashboard_url, str)
+        assert len(result.dashboard_url) > 0
+        assert isinstance(result.message, str)
 
     @pytest.mark.asyncio
     async def test_workflow_all_steps_executed(self, mock_page):
-        """Test that all workflow steps are executed in correct order.
+        """Test that all workflow steps execute in sequence.
         
-        Verifies that:
-        - All 5 steps of LoginWorkflow are executed
-        - Steps complete in the expected order
-        - Each step has status 'completed'
+        Verifies that the workflow calls all expected steps in the correct order:
+        1. Navigate to login page
+        2. Fill username
+        3. Fill password
+        4. Request approval
+        5. Click submit
+        6. Wait for dashboard
         """
         workflow = LoginWorkflow(base_url="http://localhost:8003")
         workflow._page = mock_page
         
+        # Create and set execution
+        execution = Execution(
+            execution_id=workflow.execution_id,
+            base_url=workflow.base_url,
+        )
+        workflow.set_execution(execution)
+        
+        # Track step execution
+        steps_executed = []
+        
+        # Mock step methods to track execution
+        original_navigate = workflow.navigate_to_login
+        original_fill_username = workflow.fill_username
+        original_fill_password = workflow.fill_password
+        original_click_submit = workflow.click_submit
+        original_wait_dashboard = workflow.wait_for_dashboard
+        
+        async def track_navigate():
+            steps_executed.append("navigate")
+            return await original_navigate()
+        
+        async def track_fill_username():
+            steps_executed.append("fill_username")
+            return await original_fill_username()
+        
+        async def track_fill_password():
+            steps_executed.append("fill_password")
+            return await original_fill_password()
+        
+        async def track_click_submit():
+            steps_executed.append("click_submit")
+            return await original_click_submit()
+        
+        async def track_wait_dashboard():
+            steps_executed.append("wait_dashboard")
+            return await original_wait_dashboard()
+        
+        workflow.navigate_to_login = track_navigate
+        workflow.fill_username = track_fill_username
+        workflow.fill_password = track_fill_password
+        workflow.click_submit = track_click_submit
+        workflow.wait_for_dashboard = track_wait_dashboard
+        
+        # Mock the request_approval to auto-approve for happy path
+        async def mock_approval():
+            steps_executed.append("request_approval")
+            return CheckpointDecision(choice="proceed")
+        
+        workflow.request_approval = mock_approval
+        
         input_data = LoginInput(
             url="http://localhost:8003",
             username="testuser",
-            password="testpass"
+            password="password123"
         )
         
         result = await workflow.run(input_data)
         
-        # Verify result was successful
+        # Verify all steps were executed
+        expected_order = ["navigate", "fill_username", "fill_password", "request_approval", "click_submit", "wait_dashboard"]
+        assert steps_executed == expected_order, f"Expected steps {expected_order}, got {steps_executed}"
+        
+        # Verify workflow completed successfully
         assert result.success is True
-        
-        # Verify interactions were recorded
-        interactions = mock_page.get_interactions()
-        
-        # Should have at least: navigate, fill username, fill password, click, wait for selector
-        assert len(interactions) >= 4, f"Expected at least 4 interactions, got {len(interactions)}"
