@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from ..framework.checkpoint import CheckpointDecision
 from .notifications import NotificationService
 
 
@@ -185,6 +186,36 @@ async def resolve_checkpoint_impl(
 
         # Track in memory
         _active_executions[execution_id] = execution_state
+
+        # NOTIFY THE WAITING WORKFLOW EXECUTION
+        # The workflow is paused in checkpoint() waiting for this decision
+        # We need to find the Execution object and trigger its event
+        try:
+            # Try to import and notify the execution
+            from ..framework.execution import Execution
+            
+            # Look for execution in active executions registry
+            # Note: This relies on the Execution object being registered when workflow starts
+            # For now, we try to get it from _active_executions if it was stored as an object
+            
+            # If _active_executions contains Execution objects (not just state dicts)
+            if execution_id in _active_executions:
+                exec_obj = _active_executions[execution_id]
+                # Check if it's an Execution object (has set_checkpoint_decision method)
+                if hasattr(exec_obj, 'set_checkpoint_decision'):
+                    checkpoint_decision = CheckpointDecision(**decision)
+                    exec_obj.set_checkpoint_decision(checkpoint_decision)
+                    logger.info(
+                        "Notified workflow execution to resume",
+                        extra={
+                            "execution_id": execution_id,
+                            "checkpoint_id": checkpoint_id,
+                        })
+        except Exception as e:
+            logger.warning(
+                f"Could not notify execution to resume: {e}. "
+                "Workflow will resume on next poll.",
+                extra={"execution_id": execution_id})
 
         # Signal the workflow to resume (via event or queue)
         # This is handled by the workflow execution loop waiting on checkpoint resolution
@@ -420,6 +451,8 @@ async def _execute_workflow(
         input_params: Input parameters for the workflow
     """
     try:
+        from ..framework.execution import Execution
+        
         data_dir = get_data_dir()
         execution_file = data_dir / f"{execution_id}.json"
 
@@ -433,8 +466,21 @@ async def _execute_workflow(
         with open(execution_file, "w") as f:
             json.dump(execution_state, f, indent=2)
 
+        # Create Execution object for checkpoint management
+        execution = Execution(
+            execution_id=execution_id,
+            base_url=execution_state.get("base_url", ""),
+            data_dir=data_dir
+        )
+        execution._state.state = "running"
+        execution._state.input_params = input_params
+        
+        # Store Execution object in memory so resolve_checkpoint can find it
+        _active_executions[execution_id] = execution
+
         # Create workflow instance
         workflow = workflow_class()
+        workflow.set_execution(execution)
 
         # Run workflow - this should handle checkpoints internally
         result = await workflow.run(**input_params)
@@ -450,6 +496,7 @@ async def _execute_workflow(
         with open(execution_file, "w") as f:
             json.dump(execution_state, f, indent=2)
 
+        # Update in-memory copy
         _active_executions[execution_id] = execution_state
 
         logger.info(

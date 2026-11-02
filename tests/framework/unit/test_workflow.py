@@ -9,7 +9,8 @@ import json
 
 from src.framework.workflow import Workflow
 from src.framework.errors import WorkflowError
-from src.framework.checkpoint import CheckpointQuestion, CheckpointRequest
+from src.framework.checkpoint import CheckpointQuestion, CheckpointRequest, CheckpointDecision
+from src.framework.execution import Execution
 
 
 class SimpleWorkflow(Workflow):
@@ -186,7 +187,7 @@ class TestWorkflowCheckpoint:
     """Test Workflow checkpoint functionality."""
 
     @pytest.mark.asyncio
-    async def test_checkpoint_creates_request(self, workflow):
+    async def test_checkpoint_creates_request(self, workflow, temp_state_dir):
         """Test checkpoint creates CheckpointRequest and returns response."""
         question = CheckpointQuestion(
             question_text="Proceed?",
@@ -194,21 +195,39 @@ class TestWorkflowCheckpoint:
             options=["yes", "no"]
         )
         
-        # Initialize execution
-        mock_execution = AsyncMock()
-        workflow.set_execution(mock_execution)
-        
-        result = await workflow.checkpoint(
-            question=question,
-            timeout_seconds=60
+        # Create real Execution object instead of mock
+        execution = Execution(
+            execution_id="test-exec-123",
+            base_url="https://example.com",
+            data_dir=temp_state_dir
         )
+        # Start execution to move it to RUNNING state
+        execution.start({"test": "params"})
+        
+        workflow.set_execution(execution)
+        
+        # Set up async task to resolve checkpoint after a short delay
+        async def resolve_checkpoint():
+            await asyncio.sleep(0.1)  # Give checkpoint time to create event
+            # Simulate MCP server resolving the checkpoint
+            decision = CheckpointDecision(confirmed=True, agent_notes="Test resolution")
+            execution.set_checkpoint_decision(decision)
+        
+        # Run checkpoint and resolution concurrently
+        task1 = asyncio.create_task(
+            workflow.checkpoint(question=question, timeout_seconds=60)
+        )
+        task2 = asyncio.create_task(resolve_checkpoint())
+        
+        result = await task1
+        await task2
         
         # Check that result is a CheckpointResponse with expected structure
         assert result is not None
         assert hasattr(result, "checkpoint_id")
         assert hasattr(result, "decision")
         assert hasattr(result, "execution_id")
-        assert result.decision.confirmed is True  # Default response
+        assert result.decision.confirmed is True
 
 
 class TestWorkflowLifecycleHooks:

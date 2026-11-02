@@ -5,6 +5,7 @@ Provides state transitions (pending → running → paused → completed/failed)
 and JSON-based state storage with file locking for concurrent safety.
 """
 
+import asyncio
 import json
 import uuid
 from datetime import datetime
@@ -14,6 +15,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+from .checkpoint import CheckpointDecision
 from .errors import WorkflowStateError
 
 
@@ -132,6 +134,20 @@ class Execution:
             base_url=base_url,
             state=ExecutionState.PENDING,
         )
+
+        # Checkpoint resolution: MCP server will set these when agent responds
+        self.checkpoint_event: Optional[asyncio.Event] = None
+        self.checkpoint_decision: Optional[CheckpointDecision] = None
+
+    def set_checkpoint_decision(self, decision: CheckpointDecision) -> None:
+        """Called by MCP server when agent provides checkpoint decision.
+        
+        Args:
+            decision: The agent's decision response
+        """
+        self.checkpoint_decision = decision
+        if self.checkpoint_event:
+            self.checkpoint_event.set()
 
     def start(self, input_params: dict[str, Any]) -> None:
         """Transition execution from PENDING to RUNNING.

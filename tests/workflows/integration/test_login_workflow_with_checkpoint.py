@@ -104,7 +104,19 @@ class TestLoginWorkflowWithCheckpoint:
         workflow.input = input_data
         
         # Request approval to trigger checkpoint
-        decision = await workflow.request_approval()
+        
+        # Set up async task to resolve checkpoint
+        async def resolve_checkpoint():
+            await asyncio.sleep(0.1)
+            decision = CheckpointDecision(choice="proceed", agent_notes="Test approval")
+            execution.set_checkpoint_decision(decision)
+        
+        # Request approval to trigger checkpoint
+        task1 = asyncio.create_task(workflow.request_approval())
+        task2 = asyncio.create_task(resolve_checkpoint())
+        
+        decision = await task1
+        await task2
         
         # Verify decision was made (will be "proceed" when execution is set)
         assert decision is not None

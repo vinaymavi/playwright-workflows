@@ -482,22 +482,37 @@ class Workflow(ABC):
 
         # Pause execution and wait for decision
         try:
-            # TODO: Integrate with MCP server to get decision
-            # For now, just log and wait
+            # Create event for MCP server to signal when decision is ready
+            event = asyncio.Event()
+            self._execution.checkpoint_event = event
+            
+            # Store checkpoint in execution state
             self._execution.pause(checkpoint_request.model_dump())
             self.logger.info("Execution paused at checkpoint")
 
-            # Simulate waiting for decision (replace with actual MCP integration)
-            await asyncio.sleep(1)
+            # Wait for agent to respond via MCP resolve_checkpoint tool
+            try:
+                await asyncio.wait_for(event.wait(), timeout=timeout_seconds)
+            except asyncio.TimeoutError:
+                if allow_skip:
+                    self.logger.warning(f"Checkpoint timeout ({timeout_seconds}s), skipping")
+                    decision = CheckpointDecision(confirmed=False)
+                else:
+                    raise WorkflowCheckpointTimeout(
+                        f"Checkpoint timed out after {timeout_seconds}s"
+                    )
+            else:
+                # Event was set by MCP server, get the decision
+                decision = self._execution.checkpoint_decision
+                if not decision:
+                    decision = CheckpointDecision(confirmed=False)
 
-            # Create a default response (should come from MCP server)
-            decision = CheckpointDecision(confirmed=True)
             response = CheckpointResponse(
                 checkpoint_id=checkpoint_request.checkpoint_id,
                 execution_id=self.execution_id,
                 decision=decision)
 
-            self.logger.info(f"Checkpoint decision: {response.decision.confirmed}")
+            self.logger.info(f"Checkpoint decision: {response.decision}")
             return response
 
         except asyncio.TimeoutError:
