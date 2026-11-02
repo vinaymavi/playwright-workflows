@@ -19,7 +19,6 @@ Notifications:
 - execution_failed: Sent when workflow fails
 """
 
-import asyncio
 import json
 from typing import Annotated
 
@@ -30,66 +29,52 @@ from pydantic import BaseModel, Field
 # Request/Response models for type safety
 class StartWorkflowRequest(BaseModel):
     """Start workflow request."""
+
     workflow_type: str = Field(
         description="Type/name of workflow to execute (e.g., 'login_workflow', 'form_filling')"
     )
     input_params: dict = Field(
-        default_factory=dict,
-        description="Workflow-specific input parameters"
+        default_factory=dict, description="Workflow-specific input parameters"
     )
     max_retries: int = Field(
-        default=3,
-        ge=0,
-        le=10,
-        description="Max retries for transient errors"
+        default=3, ge=0, le=10, description="Max retries for transient errors"
     )
     timeout_seconds: int = Field(
-        default=3600,
-        ge=10,
-        description="Hard timeout for entire workflow execution"
+        default=3600, ge=10, description="Hard timeout for entire workflow execution"
     )
 
 
 class ResolveCheckpointRequest(BaseModel):
     """Resolve checkpoint request."""
+
     execution_id: str = Field(description="UUID v4 of the execution to resume")
     checkpoint_id: str = Field(description="UUID v4 of the checkpoint to resolve")
     decision: dict = Field(
         description="Agent's decision response (structure depends on checkpoint question)"
     )
     agent_id: str = Field(
-        default="unknown",
-        description="Identifier of agent making the decision"
+        default="unknown", description="Identifier of agent making the decision"
     )
 
 
 class GetExecutionStatusRequest(BaseModel):
     """Get execution status request."""
+
     execution_id: str = Field(description="UUID v4 of the execution to query")
 
 
 class GetExecutionLogsRequest(BaseModel):
     """Get execution logs request."""
+
     execution_id: str = Field(description="UUID v4 of the execution")
-    event_type: str | None = Field(
-        default=None,
-        description="Filter by event type"
-    )
+    event_type: str | None = Field(default=None, description="Filter by event type")
     level: str | None = Field(
-        default=None,
-        description="Filter by log level (debug, info, warning, error)"
+        default=None, description="Filter by log level (debug, info, warning, error)"
     )
     limit: int = Field(
-        default=100,
-        ge=1,
-        le=1000,
-        description="Maximum number of logs to return"
+        default=100, ge=1, le=1000, description="Maximum number of logs to return"
     )
-    offset: int = Field(
-        default=0,
-        ge=0,
-        description="Pagination offset"
-    )
+    offset: int = Field(default=0, ge=0, description="Pagination offset")
 
 
 # Create the MCP server instance
@@ -98,10 +83,19 @@ mcp = MCPServer("WorkflowOrchestrator")
 
 @mcp.tool()
 async def start_workflow(
-    workflow_type: Annotated[str, Field(description="Type/name of workflow to execute")],
-    input_params: Annotated[dict, Field(default_factory=dict, description="Input parameters")],
-    max_retries: Annotated[int, Field(default=3, ge=0, le=10, description="Max retries")],
-    timeout_seconds: Annotated[int, Field(default=3600, ge=10, description="Timeout in seconds")]) -> str:
+    workflow_type: Annotated[
+        str, Field(description="Type/name of workflow to execute")
+    ],
+    input_params: Annotated[
+        dict, Field(default_factory=dict, description="Input parameters")
+    ],
+    max_retries: Annotated[
+        int, Field(default=3, ge=0, le=10, description="Max retries")
+    ],
+    timeout_seconds: Annotated[
+        int, Field(default=3600, ge=10, description="Timeout in seconds")
+    ],
+) -> str:
     """Start a new Playwright workflow execution."""
     from .tools import start_workflow_impl
 
@@ -109,16 +103,20 @@ async def start_workflow(
         workflow_type=workflow_type,
         input_params=input_params,
         max_retries=max_retries,
-        timeout_seconds=timeout_seconds)
+        timeout_seconds=timeout_seconds,
+    )
     return json.dumps(result)
 
 
 @mcp.tool()
 async def resolve_checkpoint(
     execution_id: Annotated[str, Field(description="UUID v4 of execution to resume")],
-    checkpoint_id: Annotated[str, Field(description="UUID v4 of checkpoint to resolve")],
+    checkpoint_id: Annotated[
+        str, Field(description="UUID v4 of checkpoint to resolve")
+    ],
     decision: Annotated[dict, Field(description="Agent's decision response")],
-    agent_id: Annotated[str, Field(default="unknown", description="Agent identifier")]) -> str:
+    agent_id: Annotated[str, Field(default="unknown", description="Agent identifier")],
+) -> str:
     """Provide agent/human decision to resume a paused workflow from checkpoint."""
     from .tools import resolve_checkpoint_impl
 
@@ -126,13 +124,15 @@ async def resolve_checkpoint(
         execution_id=execution_id,
         checkpoint_id=checkpoint_id,
         decision=decision,
-        agent_id=agent_id)
+        agent_id=agent_id,
+    )
     return json.dumps(result)
 
 
 @mcp.tool()
 async def get_execution_status(
-    execution_id: Annotated[str, Field(description="UUID v4 of execution to query")]) -> str:
+    execution_id: Annotated[str, Field(description="UUID v4 of execution to query")],
+) -> str:
     """Get current status and progress of a workflow execution."""
     from .tools import get_execution_status_impl
 
@@ -143,10 +143,17 @@ async def get_execution_status(
 @mcp.tool()
 async def get_execution_logs(
     execution_id: Annotated[str, Field(description="UUID v4 of execution")],
-    event_type: Annotated[str | None, Field(default=None, description="Filter by event type")] = None,
-    level: Annotated[str | None, Field(default=None, description="Filter by log level")] = None,
-    limit: Annotated[int, Field(default=100, ge=1, le=1000, description="Max logs")] = 100,
-    offset: Annotated[int, Field(default=0, ge=0, description="Pagination offset")] = 0) -> str:
+    event_type: Annotated[
+        str | None, Field(default=None, description="Filter by event type")
+    ] = None,
+    level: Annotated[
+        str | None, Field(default=None, description="Filter by log level")
+    ] = None,
+    limit: Annotated[
+        int, Field(default=100, ge=1, le=1000, description="Max logs")
+    ] = 100,
+    offset: Annotated[int, Field(default=0, ge=0, description="Pagination offset")] = 0,
+) -> str:
     """Retrieve structured execution logs with optional filtering."""
     from .tools import get_execution_logs_impl
 
@@ -155,35 +162,33 @@ async def get_execution_logs(
         event_type=event_type,
         level=level,
         limit=limit,
-        offset=offset)
+        offset=offset,
+    )
     return json.dumps(result)
 
 
 @mcp.tool()
 async def list_executions(
-    status: Annotated[str | None, Field(default=None, description="Filter by status (pending, running, paused, completed, failed)")] = None,
-    limit: Annotated[int, Field(default=50, ge=1, le=1000, description="Maximum number of executions")] = 50,
-    offset: Annotated[int, Field(default=0, ge=0, description="Pagination offset")] = 0) -> str:
+    status: Annotated[
+        str | None,
+        Field(
+            default=None,
+            description="Filter by status (pending, running, paused, completed, failed)",
+        ),
+    ] = None,
+    limit: Annotated[
+        int,
+        Field(default=50, ge=1, le=1000, description="Maximum number of executions"),
+    ] = 50,
+    offset: Annotated[int, Field(default=0, ge=0, description="Pagination offset")] = 0,
+) -> str:
     """List workflow executions with optional status filtering."""
     from .tools import list_executions_impl
 
-    result = await list_executions_impl(
-        status=status,
-        limit=limit,
-        offset=offset)
+    result = await list_executions_impl(status=status, limit=limit, offset=offset)
     return json.dumps(result)
-
-
-async def main() -> None:
-    """Entry point for running MCP server."""
-    async with mcp.stdio():
-        await mcp.run()
 
 
 def create_server() -> MCPServer:
     """Factory function to return MCP server instance."""
     return mcp
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

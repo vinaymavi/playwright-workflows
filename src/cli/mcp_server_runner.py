@@ -17,10 +17,12 @@ import asyncio
 
 from src.mcp_server.server import create_server
 
+server = create_server()
+
 
 async def main() -> None:
     """Run the MCP server on stdio."""
-    server = create_server()
+
     await server.run()
 
 
