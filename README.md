@@ -292,6 +292,7 @@ LOG_FILE=data/logs/workflow.log
 
 ## 🧪 Testing
 
+### Unit & Integration Tests
 ```bash
 # Run all tests
 pytest tests/ -v
@@ -306,6 +307,39 @@ pytest --cov=src tests/
 # Watch mode
 pytest-watch tests/
 ```
+
+### End-to-End Testing (No Code Required)
+
+Test the framework without writing code using the **[TESTING.md](./TESTING.md)** guide:
+
+```bash
+# Single workflow
+uv run python -m src.cli.workflow_runner login \
+    --input '{"url":"https://example.com","username":"test","password":"pass"}' \
+    --output-format json
+
+# Verify execution state
+cat data/executions/*.json | jq .
+
+# Test concurrent execution (3 workflows in parallel)
+for i in {1..3}; do
+  uv run python -m src.cli.workflow_runner login \
+    --input "{\"url\":\"https://example.com\",\"username\":\"user$i\",\"password\":\"pass\"}" \
+    --output-format json &
+done
+wait
+
+# Test MCP server
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"list_executions","arguments":{"limit":5}}}' | \
+uv run python -m src.cli.mcp_server_runner
+```
+
+**See [TESTING.md](./TESTING.md) for:**
+- 4 testing approaches (direct, concurrent, MCP, debug)
+- 11 concrete test examples
+- Verification commands for isolation & concurrency
+- Complete test workflow script
+- Troubleshooting guide
 
 ## 📚 Documentation
 
