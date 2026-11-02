@@ -9,8 +9,12 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from dataclasses import asdict
 
+from playwright.async_api import async_playwright
+
 from src.framework import Workflow
 from src.framework.errors import WorkflowError
+from src.framework.execution import Execution
+from src.framework.session_manager import SessionManager
 from src.workflows.login_workflow import LoginWorkflow, LoginInput
 from src.utils.logging import setup_logger
 
@@ -53,47 +57,79 @@ class WorkflowRunner:
         Returns:
             Exit code (0 for success, non-zero for failure)
         """
-        try:
-            # Setup logging
-            if log_dir:
-                setup_logger(
-                    name=__name__,
-                    log_file=Path(log_dir) / f"{self.workflow_type}.log"
+        # Setup logging
+        if log_dir:
+            setup_logger(
+                name=__name__,
+                log_file=Path(log_dir) / f"{self.workflow_type}.log"
+            )
+
+        # Get workflow instance
+        self.workflow = self._get_workflow()
+
+        # Parse workflow-specific input
+        if self.workflow_type == "login":
+            input_obj = LoginInput(
+                url=input_params.get("url", "http://localhost:8000"),
+                username=input_params.get("username", ""),
+                password=input_params.get("password", ""),
+            )
+        else:
+            raise ValueError(f"Unknown workflow type: {self.workflow_type}")
+
+        # Initialize Playwright and execute workflow
+        async with async_playwright() as playwright:
+            try:
+                # Launch browser
+                browser = await playwright.chromium.launch(headless=True)
+                logger.info("Browser launched")
+
+                # Initialize session manager
+                session_manager = SessionManager(self.workflow.execution_id)
+
+                # Create browser context (with session restoration if available)
+                context = await session_manager.initialize_context(
+                    browser,
+                    self.workflow.base_url,
                 )
+                logger.info("Browser context created")
 
-            # Get workflow instance
-            self.workflow = self._get_workflow()
+                # Create page
+                page = await context.new_page()
+                logger.info("Page created")
 
-            # Parse workflow-specific input
-            if self.workflow_type == "login":
-                input_obj = LoginInput(
-                    url=input_params.get("url", "http://localhost:8000"),
-                    username=input_params.get("username", ""),
-                    password=input_params.get("password", ""),
+                # Set page in workflow
+                self.workflow.set_page(page)
+                self.workflow.set_browser_context(context)
+                self.workflow.set_browser(browser)
+
+                # Initialize execution tracker
+                execution = Execution(
+                    execution_id=self.workflow.execution_id,
+                    base_url=self.workflow.base_url,
                 )
-            else:
-                raise ValueError(f"Unknown workflow type: {self.workflow_type}")
+                self.workflow.set_execution(execution)
 
-            # Run workflow
-            logger.info(f"Starting {self.workflow_type} workflow")
-            result = await self.workflow.run(input_obj)
+                # Run workflow
+                logger.info(f"Starting {self.workflow_type} workflow")
+                result = await self.workflow.run(input_obj)
 
-            # Output result
-            self._output_result(result, 0)
-            return 0
+                # Output result
+                self._output_result(result, 0)
+                return 0
 
-        except WorkflowError as e:
-            logger.error(f"Workflow error: {e}")
-            if self.workflow and hasattr(self.workflow, "output"):
-                self._output_result(self.workflow.output, 1)
-            else:
+            except WorkflowError as e:
+                logger.error(f"Workflow error: {e}")
+                if self.workflow and hasattr(self.workflow, "output"):
+                    self._output_result(self.workflow.output, 1)
+                else:
+                    self._output_error(str(e), 1)
+                return 1
+
+            except Exception as e:
+                logger.error(f"Unexpected error: {type(e).__name__}: {e}")
                 self._output_error(str(e), 1)
-            return 1
-
-        except Exception as e:
-            logger.error(f"Unexpected error: {type(e).__name__}: {e}")
-            self._output_error(str(e), 1)
-            return 1
+                return 1
 
     def _output_result(self, result: Any, exit_code: int) -> None:
         """Output result in specified format."""
