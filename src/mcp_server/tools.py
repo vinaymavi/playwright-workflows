@@ -536,3 +536,93 @@ async def _execute_workflow(
         await notification_service.send_notification(
             "execution_failed",
             {"execution_id": execution_id, "error": str(e)})
+
+
+async def list_executions_impl(
+    status: Optional[str] = None,
+    limit: int = 50,
+    offset: int = 0) -> dict[str, Any]:
+    """List workflow executions with optional status filtering.
+
+    Args:
+        status: Filter by status (pending, running, paused, completed, failed)
+        limit: Maximum number of executions to return (1-1000, default 50)
+        offset: Pagination offset (default 0)
+
+    Returns:
+        {
+            "total": int,
+            "returned": int,
+            "offset": int,
+            "executions": [
+                {
+                    "execution_id": "uuid",
+                    "workflow_type": "string",
+                    "status": "string",
+                    "created_at": "ISO8601",
+                    "started_at": "ISO8601 or null",
+                    "current_step": "string or null",
+                    "pending_checkpoint": {
+                        "checkpoint_id": "string",
+                        "question": {...}
+                    } or null
+                },
+                ...
+            ]
+        }
+    """
+    try:
+        data_dir = get_data_dir()
+
+        # Collect all execution files
+        execution_files = sorted(data_dir.glob("*.json"))
+        total = len(execution_files)
+
+        # Filter by status if provided
+        executions = []
+        for file_path in execution_files:
+            try:
+                with open(file_path, "r") as f:
+                    exec_state = json.load(f)
+
+                # Apply status filter
+                if status and exec_state.get("status") != status:
+                    continue
+
+                # Find pending checkpoint if any
+                pending_checkpoint = None
+                for cp in exec_state.get("checkpoints", []):
+                    if cp.get("response") is None:
+                        pending_checkpoint = {
+                            "checkpoint_id": cp["checkpoint_id"],
+                            "question": cp.get("question", {}),
+                        }
+                        break
+
+                executions.append({
+                    "execution_id": exec_state.get("execution_id"),
+                    "workflow_type": exec_state.get("workflow_type"),
+                    "status": exec_state.get("status"),
+                    "created_at": exec_state.get("created_at"),
+                    "started_at": exec_state.get("started_at"),
+                    "current_step": exec_state.get("current_step"),
+                    "pending_checkpoint": pending_checkpoint,
+                })
+            except (json.JSONDecodeError, IOError) as e:
+                logger.warning(f"Failed to read execution file {file_path}: {e}")
+                continue
+
+        # Apply pagination
+        returned_executions = executions[offset : offset + limit]
+        returned_count = len(returned_executions)
+
+        return {
+            "total": total,
+            "returned": returned_count,
+            "offset": offset,
+            "executions": returned_executions,
+        }
+
+    except Exception as e:
+        logger.error(f"Error listing executions: {e}", exc_info=True)
+        return {"error": str(e), "error_type": type(e).__name__}

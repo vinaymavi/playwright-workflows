@@ -159,6 +159,21 @@ async def get_execution_logs(
     return json.dumps(result)
 
 
+@mcp.tool()
+async def list_executions(
+    status: Annotated[str | None, Field(default=None, description="Filter by status (pending, running, paused, completed, failed)")] = None,
+    limit: Annotated[int, Field(default=50, ge=1, le=1000, description="Maximum number of executions")] = 50,
+    offset: Annotated[int, Field(default=0, ge=0, description="Pagination offset")] = 0) -> str:
+    """List workflow executions with optional status filtering."""
+    from .tools import list_executions_impl
+
+    result = await list_executions_impl(
+        status=status,
+        limit=limit,
+        offset=offset)
+    return json.dumps(result)
+
+
 async def main() -> None:
     """Entry point for running MCP server."""
     async with mcp.stdio():

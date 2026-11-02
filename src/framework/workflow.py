@@ -490,6 +490,18 @@ class Workflow(ABC):
             self._execution.pause(checkpoint_request.model_dump())
             self.logger.info("Execution paused at checkpoint")
 
+            # Send checkpoint notification to MCP client/agent
+            try:
+                from ..mcp_server.notifications import NotificationService
+                await NotificationService.checkpoint_requested(
+                    execution_id=self.execution_id,
+                    checkpoint_id=checkpoint_request.checkpoint_id,
+                    question=checkpoint_request.question)
+            except Exception as e:
+                self.logger.warning(
+                    f"Failed to send checkpoint notification: {e}",
+                    exc_info=False)
+
             # Wait for agent to respond via MCP resolve_checkpoint tool
             try:
                 await asyncio.wait_for(event.wait(), timeout=timeout_seconds)
