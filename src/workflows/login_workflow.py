@@ -1,7 +1,7 @@
 """Example LoginWorkflow demonstrating web automation with the framework."""
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any, Optional
 
 from src.framework import Workflow, step
@@ -160,6 +160,9 @@ class LoginWorkflow(Workflow):
         self.input = input_data
 
         try:
+            # Set execution running
+            self._execution.start(asdict(input_data))
+
             # Execute steps in sequence
             await self.navigate_to_login()
             await self.fill_username()

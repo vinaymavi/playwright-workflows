@@ -5,9 +5,9 @@ import asyncio
 import json
 import logging
 import sys
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Optional
-from dataclasses import asdict
 
 from playwright.async_api import async_playwright
 
@@ -15,9 +15,8 @@ from src.framework import Workflow
 from src.framework.errors import WorkflowError
 from src.framework.execution import Execution
 from src.framework.session_manager import SessionManager
-from src.workflows.login_workflow import LoginWorkflow, LoginInput
 from src.utils.logging import setup_logger
-
+from src.workflows.login_workflow import LoginInput, LoginWorkflow
 
 logger = logging.getLogger(__name__)
 

@@ -87,7 +87,7 @@ class Workflow(ABC):
         # State management
         if state_file is None:
             state_file = Path(f"data/executions/{execution_id}.json")
-        self._state_manager = StateManager(state_file)
+        self._state_manager = StateManager(state_file.parent)
         self._state = {}
 
         # Resource management (artifacts: screenshots, PDFs, etc.)
