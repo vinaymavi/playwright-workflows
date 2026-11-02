@@ -93,6 +93,7 @@ class ConcurrencyManager:
         # Track active executions and their quotas
         self._active_executions: Dict[str, Dict[str, Any]] = {}
         self._execution_metrics: Dict[str, ExecutionMetrics] = {}
+        self._execution_quotas: Dict[str, ResourceQuota] = {}  # Track quotas set before acquisition
         self._execution_lock = asyncio.Lock()
 
         logger.info(
@@ -109,14 +110,16 @@ class ConcurrencyManager:
         Raises:
             RuntimeError: If execution already has a slot or is at quota limit
         """
+        # Check if already exists (must be under lock)
         async with self._execution_lock:
             if execution_id in self._active_executions:
                 raise RuntimeError(f"Execution {execution_id} already has a slot")
 
-            # Acquire semaphore slot (blocks if at max_concurrent)
-            await self.semaphore.acquire()
+        # Acquire semaphore slot OUTSIDE the lock (it can block without holding the lock)
+        await self.semaphore.acquire()
 
-            # Register execution
+        # Now register under lock
+        async with self._execution_lock:
             self._active_executions[execution_id] = {
                 "slot_acquired_at": asyncio.get_event_loop().time(),
             }
@@ -267,6 +270,8 @@ class ConcurrencyManager:
             quota: Resource quota configuration
         """
         async with self._execution_lock:
+            # Store quota in both places: pre-acquisition tracker and active executions if it's already running
+            self._execution_quotas[execution_id] = quota
             if execution_id in self._active_executions:
                 self._active_executions[execution_id]["quota"] = quota
 
@@ -284,6 +289,11 @@ class ConcurrencyManager:
         Returns:
             ResourceQuota for the execution, or default if not customized
         """
+        # Check pre-acquisition quotas first
+        if execution_id in self._execution_quotas:
+            return self._execution_quotas[execution_id]
+
+        # Then check active execution quotas
         if execution_id in self._active_executions:
             quota = self._active_executions[execution_id].get("quota")
             if quota:

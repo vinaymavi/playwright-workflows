@@ -210,11 +210,11 @@
 
 - [x] T049 [US3] [P] Create tests/framework/integration/test_browser_context_isolation.py: Test N concurrent workflows with isolated contexts (mock browser)
 
-- [ ] T050 [US3] [P] Create tests/framework/integration/test_concurrent_state_isolation.py: Test N concurrent executions don't cross-contaminate state
-  - [ ] Start 10 executions with different inputs
-  - [ ] Verify each loads own state from data/executions/{execution_id}.json
-  - [ ] Verify file locking prevents state corruption
-  - [ ] Verify semaphore limits actual concurrency to 5
+- [x] T050 [US3] [P] Create tests/framework/integration/test_concurrent_state_isolation.py: Test N concurrent executions don't cross-contaminate state
+  - [x] Start 10 executions with different inputs
+  - [x] Verify each loads own state from data/executions/{execution_id}.json
+  - [x] Verify file locking prevents state corruption
+  - [x] Verify semaphore limits actual concurrency to 5
 
 - [ ] T051 [US3] Create src/cli/batch_runner.py: CLI to execute multiple workflows in parallel
   - [ ] Accept JSON array of workflow specs
