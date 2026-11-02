@@ -194,13 +194,13 @@
 
 ### User Story 3 Tasks
 
-- [ ] T046 [US3] Create src/framework/concurrency_manager.py: Manage concurrent workflow executions
-  - [ ] asyncio.Semaphore to limit concurrent operations (default 5 per plan.md research)
-  - [ ] asyncio.TaskGroup to manage workflow tasks, propagate exceptions
-  - [ ] Track active executions by ID
-  - [ ] Enforce resource quotas per execution (max browser pages, memory, timeouts)
+- [x] T046 [US3] Create src/framework/concurrency_manager.py: Manage concurrent workflow executions
+  - [x] asyncio.Semaphore to limit concurrent operations (default 5 per plan.md research)
+  - [x] asyncio.TaskGroup to manage workflow tasks, propagate exceptions
+  - [x] Track active executions by ID
+  - [x] Enforce resource quotas per execution (max browser pages, memory, timeouts)
 
-- [ ] T047 [US3] [P] Create tests/framework/unit/test_concurrency_manager.py: Unit tests for semaphore, task group, quota enforcement (no browser)
+- [x] T047 [US3] [P] Create tests/framework/unit/test_concurrency_manager.py: Unit tests for semaphore, task group, quota enforcement (no browser)
 
 - [ ] T048 [US3] Enhance src/framework/session_manager.py for browser context pooling:
   - [ ] Pool of isolated browser contexts (max N concurrent)
