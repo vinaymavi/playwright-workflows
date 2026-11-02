@@ -13,6 +13,7 @@ from playwright.async_api import Page, Browser, BrowserContext
 from .checkpoint import CheckpointQuestion, CheckpointRequest, CheckpointResponse, CheckpointDecision
 from .errors import WorkflowError, WorkflowCheckpointTimeout
 from .execution import Execution, ExecutionState
+from .resource_manager import ResourceManager, Resource
 from .state_manager import StateManager
 from ..utils.logging import setup_logger
 
@@ -84,6 +85,9 @@ class Workflow(ABC):
             state_file = Path(f"data/executions/{execution_id}.json")
         self._state_manager = StateManager(state_file)
         self._state = {}
+
+        # Resource management (artifacts: screenshots, PDFs, etc.)
+        self._resource_manager = ResourceManager()
 
         # Playwright context
         self._page: Optional[Page] = None
@@ -238,6 +242,22 @@ class Workflow(ABC):
         try:
             await self._page.screenshot(path=str(file_path))
             self.logger.info(f"Screenshot saved: {file_path}")
+
+            # Track resource in execution state
+            resource = self._resource_manager.track_resource(
+                self.execution_id,
+                file_path,
+                resource_type="screenshot",
+                name=name
+            )
+
+            # Update execution state with resource
+            if self._execution:
+                resources_data = self._execution.state.resources or []
+                resources_data.append(resource.model_dump())
+                self._execution.state.resources = resources_data
+                await self._execution.save()
+
             return file_path
         except Exception as e:
             self.logger.error(f"Screenshot failed: {e}")
@@ -263,8 +283,24 @@ class Workflow(ABC):
         self.logger.info(f"Exporting to PDF: {file_path}")
 
         try:
-            await self._page.pdf(path=str(file_path))
+            await self._page.pdf(path=str(file_path), print_background=True)
             self.logger.info(f"PDF exported: {file_path}")
+
+            # Track resource in execution state
+            resource = self._resource_manager.track_resource(
+                self.execution_id,
+                file_path,
+                resource_type="pdf",
+                name=name
+            )
+
+            # Update execution state with resource
+            if self._execution:
+                resources_data = self._execution.state.resources or []
+                resources_data.append(resource.model_dump())
+                self._execution.state.resources = resources_data
+                await self._execution.save()
+
             return file_path
         except Exception as e:
             self.logger.error(f"PDF export failed: {e}")

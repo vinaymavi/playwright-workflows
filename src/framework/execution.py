@@ -72,6 +72,9 @@ class ExecutionStateData(BaseModel):
     workflow_state: Dict[str, Any] = Field(
         default_factory=dict, description="User-defined workflow state"
     )
+    resources: list[Dict[str, Any]] = Field(
+        default_factory=list, description="Tracked artifacts (screenshots, PDFs)"
+    )
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     started_at: Optional[str] = Field(default=None)
     paused_at: Optional[str] = Field(default=None)

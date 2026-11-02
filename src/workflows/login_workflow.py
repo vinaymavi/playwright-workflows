@@ -43,7 +43,11 @@ class LoginWorkflow(Workflow):
     version = "1.0.0"
     description = "Login to a web application with username and password"
 
-    def __init__(self, execution_id: Optional[str] = None, base_url: str = "http://localhost:8000"):
+    def __init__(
+        self,
+        execution_id: str | None = None,
+        base_url: str = "http://localhost:8000",
+    ):
         """Initialize LoginWorkflow."""
         # Generate execution_id if not provided (for testing)
         if execution_id is None:
@@ -53,8 +57,8 @@ class LoginWorkflow(Workflow):
             execution_id=execution_id,
             base_url=base_url,
         )
-        self.input: Optional[LoginInput] = None
-        self.output: Optional[LoginOutput] = None
+        self.input: LoginInput | None = None
+        self.output: LoginOutput | None = None
 
     @step(name="Navigate to Login Page", max_retries=2, timeout_ms=10000)
     async def navigate_to_login(self) -> None:
@@ -84,7 +88,7 @@ class LoginWorkflow(Workflow):
     @step(name="Request Submission Approval", max_retries=0)
     async def request_approval(self) -> CheckpointDecision:
         """Request agent/human approval before submitting the login form.
-        
+
         This checkpoint allows an agent to review the form before submission.
         Note: In testing without execution context, this step is skipped.
         """
@@ -106,9 +110,9 @@ class LoginWorkflow(Workflow):
                 "current_page": self._page.url if self._page else None,
                 "form_data": {
                     "username": self.input.username,
-                    "password": "***"  # Masked for security
+                    "password": "***",  # Masked for security
                 },
-            }
+            },
         )
 
         try:
@@ -116,15 +120,17 @@ class LoginWorkflow(Workflow):
             response = await self.checkpoint(
                 question=question,
                 timeout_seconds=300,  # 5 minutes default timeout
-                allow_skip=False
+                allow_skip=False,
             )
-            
+
             # Return the decision
             return response.decision
-            
+
         except WorkflowCheckpointTimeout:
             # If checkpoint times out without allow_skip, re-raise
-            raise WorkflowError("Checkpoint timeout: Agent did not respond within 5 minutes")
+            raise WorkflowError(
+                "Checkpoint timeout: Agent did not respond within 5 minutes"
+            )
 
     @step(name="Click Submit", max_retries=2)
     async def click_submit(self) -> None:
@@ -153,10 +159,10 @@ class LoginWorkflow(Workflow):
             await self.navigate_to_login()
             await self.fill_username()
             await self.fill_password()
-            
+
             # Request approval before submitting
             decision = await self.request_approval()
-            
+
             # Check agent's decision
             if decision.choice == "cancel":
                 self.output = LoginOutput(
@@ -170,7 +176,7 @@ class LoginWorkflow(Workflow):
                     message=f"Invalid decision: {decision.choice}",
                 )
                 raise WorkflowError(f"Invalid checkpoint decision: {decision.choice}")
-            
+
             # Agent approved, proceed with submission
             await self.click_submit()
             await self.wait_for_dashboard()
