@@ -15,28 +15,47 @@ The `src/cli` folder contains command-line interfaces for running and managing P
 
 **File:** `src/cli/workflow_runner.py`
 
-Run a single workflow with specified parameters.
+Run a single workflow with JSON input parameters.
 
 ### Basic Usage
 
 ```bash
-python -m src.cli.workflow_runner \
-    --workflow-type login \
-    --url https://example.com \
-    --username testuser \
-    --password testpass
+python -m src.cli.workflow_runner login \
+    --input '{"url":"https://example.com","username":"testuser","password":"testpass"}'
 ```
 
 ### Parameters
 
 ```bash
-python -m src.cli.workflow_runner \
-    --workflow-type <type>          # Type of workflow (e.g., "login")
-    --url <url>                     # Target URL
-    --username <username>           # Login username
-    --password <password>           # Login password
-    --log-dir <path>               # Directory for logs (optional)
-    --output-format <format>       # Output format: "json" or "text" (default: json)
+python -m src.cli.workflow_runner <workflow_type> \
+    --input, -i <json>              # JSON input parameters (required)
+    --output-format, -f {json,text} # Output format (default: json)
+    --log-dir, -l <path>            # Directory for logs (default: data/logs)
+```
+
+### Input Format
+
+The `--input` parameter accepts JSON with workflow-specific fields:
+
+**Login Workflow:**
+```json
+{
+  "url": "https://example.com",
+  "username": "testuser",
+  "password": "testpass"
+}
+```
+
+**Form Filling Workflow:**
+```json
+{
+  "url": "https://example.com/form",
+  "fields": {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "message": "Hello!"
+  }
+}
 ```
 
 ### Output
@@ -44,7 +63,7 @@ python -m src.cli.workflow_runner \
 **JSON Format (default):**
 ```json
 {
-  "status": "success",
+  "success": true,
   "workflow_type": "login",
   "execution_id": "abc-123",
   "result": {
@@ -56,44 +75,62 @@ python -m src.cli.workflow_runner \
 
 **Text Format:**
 ```
-Workflow: login
-Status: SUCCESS
-Result:
-  - Logged in: Yes
-  - User ID: user-456
+✓ SUCCESS: Login workflow completed
+Dashboard URL: https://example.com/dashboard
 ```
 
 ### Examples
 
-#### Login to a website
+#### Login to a website (JSON)
 ```bash
-python -m src.cli.workflow_runner \
-    --workflow-type login \
-    --url https://example.com/login \
-    --username myuser \
-    --password mypass \
-    --output-format json
+python -m src.cli.workflow_runner login \
+    --input '{"url":"https://example.com/login","username":"myuser","password":"mypass"}'
 ```
 
-#### Run workflow with logging
+#### Login with text output
 ```bash
-python -m src.cli.workflow_runner \
-    --workflow-type login \
-    --url https://example.com \
-    --username user \
-    --password pass \
+python -m src.cli.workflow_runner login \
+    --input '{"url":"https://example.com","username":"user","password":"pass"}' \
+    --output-format text
+```
+
+#### Login with logging to file
+```bash
+python -m src.cli.workflow_runner login \
+    --input '{"url":"https://example.com","username":"user","password":"pass"}' \
+    --log-dir ./logs
+```
+
+#### Login with all options
+```bash
+python -m src.cli.workflow_runner login \
+    --input '{"url":"https://example.com","username":"user","password":"pass"}' \
+    --output-format json \
     --log-dir ./logs
 ```
 
 #### Check exit code
 ```bash
-python -m src.cli.workflow_runner \
-    --workflow-type login \
-    --url https://example.com \
-    --username user \
-    --password pass
+python -m src.cli.workflow_runner login \
+    --input '{"url":"https://example.com","username":"user","password":"pass"}'
 
 echo $?  # 0 for success, non-zero for failure
+```
+
+#### Using file for input (easier for complex JSON)
+```bash
+# Create input.json
+cat > input.json << 'EOF'
+{
+  "url": "https://example.com",
+  "username": "testuser",
+  "password": "testpass"
+}
+EOF
+
+# Run with jq to convert file to JSON string
+python -m src.cli.workflow_runner login \
+    --input "$(cat input.json | jq -c .)"
 ```
 
 ### Exit Codes
@@ -181,11 +218,35 @@ python -m src.cli.batch_runner \
 
 ### Examples
 
-#### Run 100 parallel workflows
+#### Create workflow input file
+```bash
+# Create workflows.json with 10 login workflows
+python << 'EOF'
+import json
+
+workflows = [
+    {
+        "execution_id": f"exec-{i:04d}",
+        "workflow_type": "login",
+        "params": {
+            "url": "https://example.com",
+            "username": f"user{i}",
+            "password": f"pass{i}"
+        }
+    }
+    for i in range(10)
+]
+
+with open("workflows.json", "w") as f:
+    json.dump(workflows, f, indent=2)
+EOF
+```
+
+#### Run 10 parallel workflows
 ```bash
 python -m src.cli.batch_runner \
     --input workflows.json \
-    --max-concurrent 50 \
+    --max-concurrent 5 \
     --log-dir ./batch-logs
 ```
 
@@ -197,11 +258,27 @@ python -m src.cli.batch_runner \
     --output-format text
 ```
 
-#### Process results with jq
+#### Run with custom concurrency
+```bash
+python -m src.cli.batch_runner \
+    --input workflows.json \
+    --max-concurrent 20
+```
+
+#### Process results with jq (find only failures)
 ```bash
 python -m src.cli.batch_runner \
     --input workflows.json \
     --max-concurrent 5 | jq '.results | map(select(.success == false))'
+```
+
+#### Save results to file
+```bash
+python -m src.cli.batch_runner \
+    --input workflows.json \
+    --max-concurrent 5 > results.json
+
+cat results.json | jq '.summary'
 ```
 
 ### Concurrency Control
@@ -334,9 +411,11 @@ mcp dev src/cli/mcp_server_runner.py
 import asyncio
 from src.mcp_server.server import create_server
 
+
 async def main():
     server = create_server()
     await server.run()  # Runs on stdio
+
 
 asyncio.run(main())
 ```
@@ -431,23 +510,41 @@ python -m src.cli.resume_workflow abc-123 \
 4. **Execute**: Runs resumption with selected strategy
 5. **Monitor**: Returns immediately; execution continues async
 
-## Complete Workflow Example
-
 ### Single Workflow
+
 ```bash
-# 1. Run a single workflow
-python -m src.cli.workflow_runner \
-    --workflow-type login \
-    --url https://example.com \
-    --username user \
-    --password pass \
+# 1. Run a single login workflow with JSON parameters
+python -m src.cli.workflow_runner login \
+    --input '{"url":"https://example.com","username":"testuser","password":"testpass"}' \
     --output-format json > result.json
 
 # 2. Check result
-cat result.json | jq '.status'
+cat result.json | jq '.result'
+```
+
+### Single Workflow from File
+
+```bash
+# 1. Create input.json with workflow parameters
+cat > input.json << 'EOF'
+{
+  "url": "https://example.com",
+  "username": "testuser",
+  "password": "testpass"
+}
+EOF
+
+# 2. Run workflow with input from file
+python -m src.cli.workflow_runner login \
+    --input "$(cat input.json | jq -c .)" \
+    --log-dir ./logs
+
+# 3. Check logs
+cat logs/login.log
 ```
 
 ### Batch Workflow
+
 ```bash
 # 1. Create workflows.json with 100 workflows
 python << 'EOF'
@@ -467,7 +564,7 @@ workflows = [
 ]
 
 with open("workflows.json", "w") as f:
-    json.dump(workflows, f)
+    json.dump(workflows, f, indent=2)
 EOF
 
 # 2. Run batch with 10 concurrent workflows
@@ -496,125 +593,297 @@ kill $MCP_PID
 
 ## Advanced Usage
 
-### Custom Workflow Input
-
-Extend workflow runner to support custom workflows:
-
-```python
-# src/cli/workflow_runner.py
-
-def _get_workflow(self):
-    if self.workflow_type == "login":
-        return LoginWorkflow()
-    elif self.workflow_type == "custom":
-        return MyCustomWorkflow()  # Add custom workflow
-    else:
-        raise ValueError(f"Unknown workflow type: {self.workflow_type}")
-```
-
-### Batch Configuration File
-
-Create a configuration file for batch runs:
-
-```yaml
-# batch_config.yaml
-batch:
-  max_concurrent: 10
-  log_dir: ./logs
-  timeout_seconds: 3600
-  
-workflows:
-  - execution_id: exec-001
-    workflow_type: login
-    params:
-      url: https://example.com
-      username: user1
-      password: pass1
-  - execution_id: exec-002
-    workflow_type: form_filling
-    params:
-      url: https://example.com/form
-```
-
-### Error Handling
-
-All CLI tools return appropriate exit codes:
+### Using Shell Variables for Sensitive Data
 
 ```bash
-# Success
-python -m src.cli.workflow_runner ... 
-echo $?  # 0
+# Set environment variables for sensitive data
+export WORKFLOW_USER="testuser"
+export WORKFLOW_PASS="testpass"
 
-# Failure
-python -m src.cli.workflow_runner --workflow-type invalid
-echo $?  # 1
+# Create JSON input using shell variables
+INPUT=$(jq -n \
+  --arg url "https://example.com" \
+  --arg username "$WORKFLOW_USER" \
+  --arg password "$WORKFLOW_PASS" \
+  '{url: $url, username: $username, password: $password}')
+
+# Run workflow with JSON from shell variable
+python -m src.cli.workflow_runner login --input "$INPUT"
 ```
 
-### Logging
+### Processing Large Batch Files
+
+```bash
+# Split large workflows.json into chunks
+split -l 100 workflows.json workflows_chunk_
+
+# Run each chunk with concurrency
+for chunk in workflows_chunk_*; do
+  python -m src.cli.batch_runner \
+    --input "$chunk" \
+    --max-concurrent 10 &
+done
+
+# Wait for all to complete
+wait
+```
+
+### Filtering and Transforming Results
+
+```bash
+# Run batch and save results
+python -m src.cli.batch_runner \
+    --input workflows.json \
+    --max-concurrent 10 > results.json
+
+# Get only failed executions
+jq '.results | map(select(.success == false))' results.json
+
+# Get execution times for performance analysis
+jq '.results | map({execution_id, elapsed_seconds})' results.json
+
+# Generate summary report
+jq '{
+  total: .total_workflows,
+  succeeded: .succeeded,
+  failed: .failed,
+  avg_time: (.results | map(.elapsed_seconds) | add / length),
+  min_time: (.results | map(.elapsed_seconds) | min),
+  max_time: (.results | map(.elapsed_seconds) | max)
+}' results.json
+```
+
+### Custom Workflow Input Validation
+
+```bash
+# Validate JSON before running
+python << 'EOF'
+import json
+import sys
+
+try:
+    with open('input.json') as f:
+        data = json.load(f)
+    
+    # Validate required fields
+    required = ['url', 'username', 'password']
+    for field in required:
+        if field not in data:
+            print(f"Error: Missing required field '{field}'", file=sys.stderr)
+            sys.exit(1)
+    
+    print("✓ Input validation passed")
+except json.JSONDecodeError as e:
+    print(f"Error: Invalid JSON: {e}", file=sys.stderr)
+    sys.exit(1)
+EOF
+```
+
+### Parallel Workflow Execution Script
+
+```bash
+#!/bin/bash
+# run_all_workflows.sh
+
+set -e  # Exit on error
+
+INPUT_DIR="./inputs"
+LOG_DIR="./logs"
+MAX_CONCURRENT=10
+
+mkdir -p "$LOG_DIR"
+
+# Counter for tracking
+TOTAL=0
+COMPLETED=0
+
+# Run all .json files in inputs directory
+for input_file in "$INPUT_DIR"/*.json; do
+    workflow_name=$(basename "$input_file" .json)
+    
+    python -m src.cli.workflow_runner login \
+        --input "$(cat "$input_file" | jq -c .)" \
+        --log-dir "$LOG_DIR" \
+        --output-format json > "$LOG_DIR/$workflow_name.result.json" &
+    
+    TOTAL=$((TOTAL + 1))
+    
+    # Limit concurrency
+    if (( TOTAL % MAX_CONCURRENT == 0 )); then
+        wait
+    fi
+done
+
+# Wait for remaining
+wait
+
+echo "✓ All $TOTAL workflows completed"
+```
+
+### Error Handling in Batch Processing
+
+```bash
+# Check for failed workflows and retry
+python << 'EOF'
+import json
+import subprocess
+import sys
+
+# Run batch
+result = subprocess.run([
+    'python', '-m', 'src.cli.batch_runner',
+    '--input', 'workflows.json',
+    '--max-concurrent', '10'
+], capture_output=True, text=True)
+
+data = json.loads(result.stdout)
+
+# Find failed executions
+failed = [r for r in data['results'] if not r['success']]
+
+if failed:
+    print(f"Found {len(failed)} failed workflows:")
+    for f in failed:
+        print(f"  - {f['execution_id']}: {f.get('error', 'Unknown error')}")
+    
+    # Retry failed workflows
+    print("\nRetrying failed workflows...")
+    for f in failed:
+        print(f"  Retrying {f['execution_id']}...")
+        # Re-run just this one
+EOF
+```
+
+## Logging
 
 All tools support logging to files:
 
 ```bash
-# Single workflow
-python -m src.cli.workflow_runner \
-    --workflow-type login \
-    ... \
+# Single workflow with logging
+python -m src.cli.workflow_runner login \
+    --input '{"url":"https://example.com","username":"user","password":"pass"}' \
     --log-dir ./logs
 
 # Check logs
 tail -f ./logs/login.log
 
-# Batch
+# Batch with logging
 python -m src.cli.batch_runner \
     --input workflows.json \
     --log-dir ./batch-logs
 
 # Each execution has its log
 tail -f ./batch-logs/exec-001.log
+
+# Filter logs
+grep "ERROR" ./batch-logs/*.log
+grep "SUCCESS" ./batch-logs/*.log | wc -l
 ```
 
 ## Best Practices
 
-1. **Single Workflows**: Use `workflow_runner.py` for one-off executions
-2. **Batch Operations**: Use `batch_runner.py` for multiple workflows
-3. **External Control**: Use `mcp_server_runner.py` for AI/agent control
-4. **Resumption**: Use `resume_workflow.py` for failed/paused workflows
-5. **Concurrency**: Start with `max_concurrent=5`, tune based on resources
-6. **Logging**: Always enable logging for debugging failures
-7. **Output Format**: Use JSON for programmatic processing, text for humans
+1. **Single Workflows**: Use `workflow_runner` with `--input` JSON parameter
+   ```bash
+   python -m src.cli.workflow_runner <type> --input '<json>'
+   ```
+
+2. **Batch Operations**: Use `batch_runner` with JSON file
+   ```bash
+   python -m src.cli.batch_runner --input workflows.json --max-concurrent 10
+   ```
+
+3. **External Control**: Use `mcp_server_runner` for AI/agent control
+   ```bash
+   python -m src.cli.mcp_server_runner
+   ```
+
+4. **Resumption**: Use `resume_workflow` for failed/paused workflows
+   ```bash
+   python -m src.cli.resume_workflow <execution_id>
+   ```
+
+5. **Input Format**: Always use JSON parameters via `--input` flag
+   - Single workflow: Pass JSON as string with proper escaping
+   - Batch: Create workflows.json with array of objects
+
+6. **Concurrency**: Start with `--max-concurrent 5`, tune based on resources
+   - Light workflows: 50-100 concurrent
+   - Medium workflows: 20-30 concurrent
+   - Heavy workflows: 5-10 concurrent
+
+7. **Logging**: Always enable `--log-dir` for production and debugging
+   ```bash
+   python -m src.cli.workflow_runner login --input '...' --log-dir ./logs
+   ```
+
+8. **Output Format**: Use `--output-format json` for scripts, `text` for humans
 
 ## Troubleshooting
 
-### Workflows timeout
+### Invalid JSON input error
 ```bash
-# Increase timeout or check if workflow is stuck
-python -m src.cli.workflow_runner \
-    --workflow-type login \
-    ... \
+# Error: Invalid JSON input
+python -m src.cli.workflow_runner login --input '{"url":"example.com"}'
+
+# Fix: Ensure JSON is properly formatted and escaped
+python -m src.cli.workflow_runner login \
+    --input '{"url":"https://example.com","username":"user","password":"pass"}'
+
+# Validate JSON first using jq
+cat input.json | jq . > /dev/null
+python -m src.cli.workflow_runner login --input "$(cat input.json | jq -c .)"
+```
+
+### Workflow execution not starting
+```bash
+# 1. Enable logging to see errors
+python -m src.cli.workflow_runner login \
+    --input '{"url":"https://example.com","username":"user","password":"pass"}' \
     --log-dir ./logs
 
-# Check logs
-cat ./logs/login.log
+# 2. Check log file for error details
+cat logs/login.log
+
+# 3. Verify input parameters are complete
+python << 'EOF'
+import json
+data = json.loads('{"url":"https://example.com","username":"user","password":"pass"}')
+print("Input parameters:", json.dumps(data, indent=2))
+EOF
+```
+
+### Workflows timeout
+```bash
+# Check if workflow is actually running
+tail -f ./logs/login.log
+
+# Enable more verbose logging
+export LOG_LEVEL=DEBUG
+python -m src.cli.workflow_runner login --input '...' --log-dir ./logs
 ```
 
 ### High memory usage with batch
 ```bash
-# Reduce max concurrent
+# Reduce max concurrent executions
 python -m src.cli.batch_runner \
     --input workflows.json \
-    --max-concurrent 5  # Lower from 20
+    --max-concurrent 5  # Lower from current value
 
-# Monitor memory
-watch -n 1 'ps aux | grep workflow_runner'
+# Monitor memory and CPU
+watch -n 1 'ps aux | grep python | grep workflow'
+
+# Kill batch runner if needed
+pkill -f "src.cli.batch_runner"
 ```
 
 ### MCP server not responding
 ```bash
-# Check server is running
+# Check if server is running
 ps aux | grep mcp_server_runner
 
-# Run with verbose output
-python -m src.cli.mcp_server_runner --verbose
+# Try restarting
+pkill -f "src.cli.mcp_server_runner"
+python -m src.cli.mcp_server_runner &
 ```
 
 ## See Also
