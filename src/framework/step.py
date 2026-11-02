@@ -26,8 +26,7 @@ def step(
     *,
     max_retries: int = 3,
     timeout_seconds: Optional[int] = None,
-    description: Optional[str] = None,
-):
+    description: Optional[str] = None):
     """Decorator for workflow step methods.
 
     Wraps step execution with:
@@ -76,8 +75,7 @@ def step(
                         *args,
                         policy=retry_policy,
                         step_name=step_name,
-                        **kwargs,
-                    )
+                        **kwargs)
 
                     logger.debug(f"Step succeeded: {step_name}")
 
@@ -85,8 +83,7 @@ def step(
                     step_result = StepResult(
                         name=step_name,
                         status="success",
-                        output=result if not inspect.iscoroutine(result) else None,
-                    )
+                        output=result if not inspect.iscoroutine(result) else None)
 
                     # Track result if execution tracking is available
                     if hasattr(self, "_execution") and self._execution:
@@ -108,8 +105,7 @@ def step(
                         name=step_name,
                         status="failed",
                         error=str(e),
-                        retry_count=retry_policy.max_retries if not is_transient else 0,
-                    )
+                        retry_count=retry_policy.max_retries if not is_transient else 0)
 
                     # Track result if execution tracking is available
                     if hasattr(self, "_execution") and self._execution:
@@ -122,14 +118,12 @@ def step(
                                 "step": step_name,
                                 "error_type": type(e).__name__,
                                 "max_retries": max_retries,
-                            },
-                        )
+                            })
                         raise TransientError(step_name, str(e), cause=e)
                     else:
                         logger.error(
                             f"Permanent error in step '{step_name}': {e}",
-                            extra={"step": step_name, "error_type": type(e).__name__},
-                        )
+                            extra={"step": step_name, "error_type": type(e).__name__})
                         raise PermanentError(step_name, str(e), cause=e)
 
             return async_wrapper
@@ -148,8 +142,7 @@ def step(
                         *args,
                         policy=retry_policy,
                         step_name=step_name,
-                        **kwargs,
-                    )
+                        **kwargs)
 
                     logger.debug(f"Step succeeded: {step_name}")
 
@@ -157,8 +150,7 @@ def step(
                     step_result = StepResult(
                         name=step_name,
                         status="success",
-                        output=result,
-                    )
+                        output=result)
 
                     # Track result if execution tracking is available
                     if hasattr(self, "_execution") and self._execution:
@@ -180,8 +172,7 @@ def step(
                         name=step_name,
                         status="failed",
                         error=str(e),
-                        retry_count=retry_policy.max_retries if not is_transient else 0,
-                    )
+                        retry_count=retry_policy.max_retries if not is_transient else 0)
 
                     # Track result if execution tracking is available
                     if hasattr(self, "_execution") and self._execution:
@@ -194,14 +185,12 @@ def step(
                                 "step": step_name,
                                 "error_type": type(e).__name__,
                                 "max_retries": max_retries,
-                            },
-                        )
+                            })
                         raise TransientError(step_name, str(e), cause=e)
                     else:
                         logger.error(
                             f"Permanent error in step '{step_name}': {e}",
-                            extra={"step": step_name, "error_type": type(e).__name__},
-                        )
+                            extra={"step": step_name, "error_type": type(e).__name__})
                         raise PermanentError(step_name, str(e), cause=e)
 
             return sync_wrapper

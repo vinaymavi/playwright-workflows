@@ -7,11 +7,9 @@ This module provides JSON-based persistence for checkpoints, enabling:
 """
 
 import json
-import os
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-import uuid
+from typing import Any, Optional
 
 from src.utils.logging import setup_logger
 
@@ -21,7 +19,7 @@ class CheckpointStore:
 
     def __init__(self, store_dir: str = "data/checkpoints"):
         """Initialize checkpoint store.
-        
+
         Args:
             store_dir: Directory where checkpoint files are stored
         """
@@ -31,10 +29,10 @@ class CheckpointStore:
 
     def _get_checkpoint_path(self, checkpoint_id: str) -> Path:
         """Get the file path for a checkpoint.
-        
+
         Args:
             checkpoint_id: The checkpoint UUID
-            
+
         Returns:
             Path to the checkpoint JSON file
         """
@@ -42,33 +40,33 @@ class CheckpointStore:
 
     def _get_execution_index_path(self, execution_id: str) -> Path:
         """Get the file path for an execution's checkpoint index.
-        
+
         Args:
             execution_id: The execution UUID
-            
+
         Returns:
             Path to the execution's checkpoint index file
         """
         return self.store_dir / f"execution_{execution_id}_index.json"
 
-    def save(self, checkpoint_data: Dict[str, Any]) -> str:
+    def save(self, checkpoint_data: dict[str, Any]) -> str:
         """Save a checkpoint to disk.
-        
+
         Args:
             checkpoint_data: Dictionary containing checkpoint information
-            
+
         Returns:
             The checkpoint_id of the saved checkpoint
-            
+
         Raises:
             ValueError: If checkpoint_data missing required fields
         """
         if "checkpoint_id" not in checkpoint_data:
             checkpoint_data["checkpoint_id"] = str(uuid.uuid4())
-        
+
         if "execution_id" not in checkpoint_data:
             raise ValueError("checkpoint_data must include 'execution_id'")
-        
+
         if "created_at" not in checkpoint_data:
             checkpoint_data["created_at"] = datetime.utcnow().isoformat() + "Z"
 
@@ -90,21 +88,21 @@ class CheckpointStore:
 
         return checkpoint_id
 
-    def load(self, checkpoint_id: str) -> Optional[Dict[str, Any]]:
+    def load(self, checkpoint_id: str) -> Optional[dict[str, Any]]:
         """Load a checkpoint from disk.
-        
+
         Args:
             checkpoint_id: The checkpoint UUID
-            
+
         Returns:
             Checkpoint data dictionary, or None if not found
         """
         checkpoint_path = self._get_checkpoint_path(checkpoint_id)
-        
+
         if not checkpoint_path.exists():
             self.logger.warning(f"Checkpoint {checkpoint_id} not found")
             return None
-        
+
         try:
             with open(checkpoint_path, "r") as f:
                 data = json.load(f)
@@ -114,47 +112,47 @@ class CheckpointStore:
             self.logger.error(f"Failed to load checkpoint {checkpoint_id}: {e}")
             return None
 
-    def get_pending(self, execution_id: str) -> List[Dict[str, Any]]:
+    def get_pending(self, execution_id: str) -> list[dict[str, Any]]:
         """Get all pending checkpoints for an execution.
-        
+
         Args:
             execution_id: The execution UUID
-            
+
         Returns:
             List of pending checkpoint data dictionaries
         """
         pending = []
         index_path = self._get_execution_index_path(execution_id)
-        
+
         if not index_path.exists():
             return pending
-        
+
         try:
             with open(index_path, "r") as f:
                 index_data = json.load(f)
-            
+
             checkpoint_ids = index_data.get("checkpoints", [])
-            
+
             for cp_id in checkpoint_ids:
                 checkpoint = self.load(cp_id)
                 if checkpoint and checkpoint.get("status") == "pending":
                     pending.append(checkpoint)
-            
+
             self.logger.info(f"Found {len(pending)} pending checkpoints for execution {execution_id}")
             return pending
-            
+
         except Exception as e:
             self.logger.error(f"Failed to get pending checkpoints for {execution_id}: {e}")
             return pending
 
-    def mark_resolved(self, checkpoint_id: str, decision: Dict[str, Any], timestamp: Optional[str] = None) -> bool:
+    def mark_resolved(self, checkpoint_id: str, decision: dict[str, Any], timestamp: Optional[str] = None) -> bool:
         """Mark a checkpoint as resolved with agent decision.
-        
+
         Args:
             checkpoint_id: The checkpoint UUID
             decision: The agent's decision
             timestamp: Resolution timestamp (ISO8601, defaults to now)
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -162,11 +160,11 @@ class CheckpointStore:
         if not checkpoint:
             self.logger.error(f"Cannot mark unknown checkpoint {checkpoint_id} as resolved")
             return False
-        
+
         checkpoint["status"] = "resolved"
         checkpoint["response"] = decision
         checkpoint["resolved_at"] = timestamp or (datetime.utcnow().isoformat() + "Z")
-        
+
         checkpoint_path = self._get_checkpoint_path(checkpoint_id)
         try:
             with open(checkpoint_path, "w") as f:
@@ -179,12 +177,12 @@ class CheckpointStore:
 
     def mark_timeout(self, checkpoint_id: str, timeout_strategy: str, timestamp: Optional[str] = None) -> bool:
         """Mark a checkpoint as timed out.
-        
+
         Args:
             checkpoint_id: The checkpoint UUID
             timeout_strategy: How to handle timeout ('keep_alive' or 'replay')
             timestamp: Timeout timestamp (ISO8601, defaults to now)
-            
+
         Returns:
             True if successful, False otherwise
         """
@@ -192,11 +190,11 @@ class CheckpointStore:
         if not checkpoint:
             self.logger.error(f"Cannot mark unknown checkpoint {checkpoint_id} as timed out")
             return False
-        
+
         checkpoint["status"] = "timeout"
         checkpoint["timeout_strategy"] = timeout_strategy
         checkpoint["timeout_at"] = timestamp or (datetime.utcnow().isoformat() + "Z")
-        
+
         checkpoint_path = self._get_checkpoint_path(checkpoint_id)
         try:
             with open(checkpoint_path, "w") as f:
@@ -207,44 +205,44 @@ class CheckpointStore:
             self.logger.error(f"Failed to mark checkpoint {checkpoint_id} as timed out: {e}")
             return False
 
-    def query_execution_checkpoints(self, execution_id: str, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    def query_execution_checkpoints(self, execution_id: str, status: Optional[str] = None) -> list[dict[str, Any]]:
         """Query all checkpoints for an execution, optionally filtered by status.
-        
+
         Args:
             execution_id: The execution UUID
             status: Optional status filter ('pending', 'resolved', 'timeout', 'error')
-            
+
         Returns:
             List of matching checkpoint data dictionaries
         """
         results = []
         index_path = self._get_execution_index_path(execution_id)
-        
+
         if not index_path.exists():
             return results
-        
+
         try:
             with open(index_path, "r") as f:
                 index_data = json.load(f)
-            
+
             checkpoint_ids = index_data.get("checkpoints", [])
-            
+
             for cp_id in checkpoint_ids:
                 checkpoint = self.load(cp_id)
                 if checkpoint:
                     if status is None or checkpoint.get("status") == status:
                         results.append(checkpoint)
-            
+
             self.logger.info(f"Query: Found {len(results)} checkpoints for {execution_id} (status={status})")
             return results
-            
+
         except Exception as e:
             self.logger.error(f"Failed to query checkpoints for {execution_id}: {e}")
             return results
 
-    def list_all_checkpoints(self) -> List[str]:
+    def list_all_checkpoints(self) -> list[str]:
         """List all checkpoint IDs in the store.
-        
+
         Returns:
             List of checkpoint file names
         """
@@ -258,19 +256,19 @@ class CheckpointStore:
 
     def delete_checkpoint(self, checkpoint_id: str) -> bool:
         """Delete a checkpoint from storage (use with caution - audit trail loss).
-        
+
         Args:
             checkpoint_id: The checkpoint UUID
-            
+
         Returns:
             True if deleted, False if not found or error
         """
         checkpoint_path = self._get_checkpoint_path(checkpoint_id)
-        
+
         if not checkpoint_path.exists():
             self.logger.warning(f"Checkpoint {checkpoint_id} not found for deletion")
             return False
-        
+
         try:
             checkpoint_path.unlink()
             self.logger.info(f"Deleted checkpoint {checkpoint_id}")
@@ -281,25 +279,25 @@ class CheckpointStore:
 
     def _update_execution_index(self, execution_id: str, checkpoint_id: str) -> None:
         """Update the execution's checkpoint index with a new checkpoint.
-        
+
         Args:
             execution_id: The execution UUID
             checkpoint_id: The checkpoint UUID to add
         """
         index_path = self._get_execution_index_path(execution_id)
-        
+
         index_data = {"execution_id": execution_id, "checkpoints": []}
-        
+
         if index_path.exists():
             try:
                 with open(index_path, "r") as f:
                     index_data = json.load(f)
             except Exception as e:
                 self.logger.warning(f"Failed to read execution index for {execution_id}: {e}")
-        
+
         if checkpoint_id not in index_data.get("checkpoints", []):
             index_data["checkpoints"].append(checkpoint_id)
-        
+
         try:
             with open(index_path, "w") as f:
                 json.dump(index_data, f, indent=2)
@@ -313,10 +311,10 @@ _store_instance: Optional[CheckpointStore] = None
 
 def get_checkpoint_store(store_dir: str = "data/checkpoints") -> CheckpointStore:
     """Get or create the global checkpoint store instance.
-    
+
     Args:
         store_dir: Directory where checkpoint files are stored (only used on first call)
-        
+
     Returns:
         CheckpointStore instance
     """

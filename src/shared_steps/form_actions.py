@@ -4,7 +4,7 @@ Provides common actions for form filling, validation, and submission.
 These actions can be used across multiple workflows without modification.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from playwright.async_api import Page, TimeoutError
 
@@ -29,7 +29,7 @@ class FillFormAction(Action):
         })
     """
 
-    async def execute(self, fields: Dict[str, str], wait_ms: int = 5000) -> Dict[str, Any]:
+    async def execute(self, fields: dict[str, str], wait_ms: int = 5000) -> dict[str, Any]:
         """Fill form fields.
 
         Args:
@@ -99,8 +99,7 @@ class SelectFromDropdownAction(Action):
         value: Optional[str] = None,
         label: Optional[str] = None,
         index: Optional[int] = None,
-        wait_ms: int = 5000,
-    ) -> Dict[str, Any]:
+        wait_ms: int = 5000) -> dict[str, Any]:
         """Select an option from a dropdown.
 
         Args:
@@ -174,8 +173,7 @@ class ClickElementAction(Action):
         selector: str,
         double_click: bool = False,
         wait_for_navigation: bool = False,
-        wait_ms: int = 5000,
-    ) -> Dict[str, Any]:
+        wait_ms: int = 5000) -> dict[str, Any]:
         """Click an element.
 
         Args:
@@ -237,9 +235,8 @@ class ValidateFormFieldAction(Action):
 
     async def execute(
         self,
-        fields: Dict[str, Optional[str]],
-        wait_ms: int = 5000,
-    ) -> Dict[str, Any]:
+        fields: dict[str, Optional[str]],
+        wait_ms: int = 5000) -> dict[str, Any]:
         """Validate form fields.
 
         Args:
@@ -308,8 +305,7 @@ class CheckCheckboxAction(Action):
         self,
         selector: str,
         checked: bool = True,
-        wait_ms: int = 5000,
-    ) -> Dict[str, Any]:
+        wait_ms: int = 5000) -> dict[str, Any]:
         """Check or uncheck a checkbox.
 
         Args:

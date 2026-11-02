@@ -4,9 +4,8 @@ Provides registration, discovery, and management of Action classes.
 Supports both explicit registration and auto-discovery via entry points.
 """
 
-import importlib
 import inspect
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Optional, Type
 
 from ..utils.logging import setup_logger
 from .action import Action
@@ -32,8 +31,8 @@ class ActionRegistry:
 
     def __init__(self):
         """Initialize the action registry."""
-        self._actions: Dict[str, Type[Action]] = {}
-        self._metadata: Dict[str, Dict[str, Any]] = {}
+        self._actions: dict[str, Type[Action]] = {}
+        self._metadata: dict[str, dict[str, Any]] = {}
         logger.debug("Initialized ActionRegistry")
 
     def register(
@@ -96,7 +95,7 @@ class ActionRegistry:
         """
         return name in self._actions
 
-    def list(self) -> List[str]:
+    def list(self) -> list[str]:
         """List all registered action names.
 
         Returns:
@@ -104,7 +103,7 @@ class ActionRegistry:
         """
         return sorted(self._actions.keys())
 
-    def get_metadata(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_metadata(self, name: str) -> Optional[dict[str, Any]]:
         """Get metadata for a registered action.
 
         Args:
@@ -154,7 +153,6 @@ class ActionRegistry:
             entry_point_group: Name of the entry point group to scan
         """
         try:
-            import importlib.metadata as metadata
         except ImportError:
             # Python < 3.8
             import importlib_metadata as metadata

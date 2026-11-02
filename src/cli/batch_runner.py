@@ -1,13 +1,11 @@
 """CLI for executing multiple workflows in parallel with concurrency control."""
 
 import argparse
-import asyncio
 import json
-import sys
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from dataclasses import asdict, dataclass
 
 from src.framework import Workflow
@@ -28,15 +26,15 @@ class BatchExecutionResult:
     succeeded: int
     failed: int
     total_time_seconds: float
-    results: List[Dict[str, Any]]
-    errors: List[Dict[str, Any]]
+    results: list[dict[str, Any]]
+    errors: list[dict[str, Any]]
 
     @property
     def success(self) -> bool:
         """True if all workflows succeeded."""
         return self.failed == 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "total_workflows": self.total_workflows,
@@ -56,8 +54,7 @@ class BatchRunner:
     def __init__(
         self,
         max_concurrent: int = 5,
-        output_format: str = "json",
-    ):
+        output_format: str = "json"):
         """
         Initialize batch runner.
 
@@ -80,9 +77,8 @@ class BatchRunner:
         self,
         execution_id: str,
         workflow_type: str,
-        input_params: Dict[str, Any],
-        log_dir: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        input_params: dict[str, Any],
+        log_dir: Optional[str] = None) -> dict[str, Any]:
         """Run a single workflow with concurrency control.
 
         Args:
@@ -114,8 +110,7 @@ class BatchRunner:
                 input_obj = LoginInput(
                     url=input_params.get("url", "http://localhost:8000"),
                     username=input_params.get("username", ""),
-                    password=input_params.get("password", ""),
-                )
+                    password=input_params.get("password", ""))
             else:
                 raise ValueError(f"Unknown workflow type: {workflow_type}")
 
@@ -170,9 +165,8 @@ class BatchRunner:
 
     async def run_batch(
         self,
-        workflow_specs: List[Dict[str, Any]],
-        log_dir: Optional[str] = None,
-    ) -> BatchExecutionResult:
+        workflow_specs: list[dict[str, Any]],
+        log_dir: Optional[str] = None) -> BatchExecutionResult:
         """Run multiple workflows in parallel with concurrency control.
 
         Args:
@@ -199,8 +193,7 @@ class BatchRunner:
                 execution_id=execution_id,
                 workflow_type=workflow_type,
                 input_params=input_params,
-                log_dir=log_dir,
-            )
+                log_dir=log_dir)
             tasks.append(task)
 
         # Run all workflows concurrently
@@ -226,8 +219,7 @@ class BatchRunner:
             failed=failed,
             total_time_seconds=elapsed,
             results=results,
-            errors=errors,
-        )
+            errors=errors)
 
     def _output_result(self, batch_result: BatchExecutionResult, exit_code: int) -> None:
         """Output result in specified format."""
@@ -237,7 +229,7 @@ class BatchRunner:
 
         elif self.output_format == "text":
             print(f"\n{'='*60}")
-            print(f"Batch Execution Summary")
+            print("Batch Execution Summary")
             print(f"{'='*60}")
             print(f"Total workflows: {batch_result.total_workflows}")
             print(f"Succeeded: {batch_result.succeeded}")
@@ -312,39 +304,34 @@ Input JSON format:
       }
     }
   ]
-        """,
-    )
+        """)
 
     parser.add_argument(
         "--input",
         "-i",
         required=True,
         type=str,
-        help="JSON file with array of workflow specifications",
-    )
+        help="JSON file with array of workflow specifications")
 
     parser.add_argument(
         "--max-concurrent",
         "-c",
         type=int,
         default=5,
-        help="Maximum concurrent workflows (default: 5)",
-    )
+        help="Maximum concurrent workflows (default: 5)")
 
     parser.add_argument(
         "--output-format",
         "-f",
         choices=["json", "text"],
         default="json",
-        help="Output format (default: json)",
-    )
+        help="Output format (default: json)")
 
     parser.add_argument(
         "--log-dir",
         "-l",
         default="data/batch_logs",
-        help="Directory to write logs to (default: data/batch_logs)",
-    )
+        help="Directory to write logs to (default: data/batch_logs)")
 
     args = parser.parse_args()
 
@@ -372,8 +359,7 @@ Input JSON format:
     # Create runner and run batch
     runner = BatchRunner(
         max_concurrent=args.max_concurrent,
-        output_format=args.output_format,
-    )
+        output_format=args.output_format)
 
     # Ensure log directory exists
     if args.log_dir:

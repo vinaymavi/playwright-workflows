@@ -1,19 +1,15 @@
 """Base Workflow class for Playwright-based automation workflows."""
 
-import asyncio
-import json
-import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from playwright.async_api import Page, Browser, BrowserContext
 
 from .checkpoint import CheckpointQuestion, CheckpointRequest, CheckpointResponse, CheckpointDecision
 from .errors import WorkflowError, WorkflowCheckpointTimeout
-from .execution import Execution, ExecutionState
-from .resource_manager import ResourceManager, Resource
+from .resource_manager import ResourceManager
 from .state_manager import StateManager
 from ..utils.logging import setup_logger
 
@@ -32,7 +28,7 @@ class Workflow(ABC):
             version = "1.0.0"
             description = "Login to web application"
 
-            async def run(self, username: str, password: str) -> Dict[str, Any]:
+            async def run(self, username: str, password: str) -> dict[str, Any]:
                 await self.navigate(f"{self.base_url}/login")
                 await self.fill("#username", username)
                 await self.fill("#password", password)
@@ -61,8 +57,7 @@ class Workflow(ABC):
         max_retries: int = 3,
         timeout_seconds: int = 3600,
         logger=None,
-        state_file: Optional[Path] = None,
-    ):
+        state_file: Optional[Path] = None):
         """
         Initialize workflow execution context.
 
@@ -98,7 +93,7 @@ class Workflow(ABC):
         self._execution: Optional[Execution] = None
 
     @abstractmethod
-    async def run(self, **input_params) -> Dict[str, Any]:
+    async def run(self, **input_params) -> dict[str, Any]:
         """
         Execute workflow steps. Developers override this method.
 
@@ -323,7 +318,7 @@ class Workflow(ABC):
         if self._execution:
             self._execution.save()
 
-    def get_all_state(self) -> Dict[str, Any]:
+    def get_all_state(self) -> dict[str, Any]:
         """Get complete state dict (read-only)."""
         return dict(self._state)
 
@@ -333,8 +328,7 @@ class Workflow(ABC):
         self,
         question: CheckpointQuestion,
         timeout_seconds: Optional[int] = None,
-        allow_skip: bool = False,
-    ) -> CheckpointResponse:
+        allow_skip: bool = False) -> CheckpointResponse:
         """
         Pause workflow and request agent decision.
 
@@ -370,8 +364,7 @@ class Workflow(ABC):
             step_name="checkpoint",
             question=question,
             timeout_seconds=timeout_seconds,
-            context=self.get_all_state(),
-        )
+            context=self.get_all_state())
 
         # Pause execution and wait for decision
         try:
@@ -388,8 +381,7 @@ class Workflow(ABC):
             response = CheckpointResponse(
                 checkpoint_id=checkpoint_request.checkpoint_id,
                 execution_id=self.execution_id,
-                decision=decision,
-            )
+                decision=decision)
 
             self.logger.info(f"Checkpoint decision: {response.decision.confirmed}")
             return response
@@ -401,8 +393,7 @@ class Workflow(ABC):
                 return CheckpointResponse(
                     checkpoint_id=checkpoint_request.checkpoint_id,
                     execution_id=self.execution_id,
-                    decision=decision,
-                )
+                    decision=decision)
             else:
                 raise WorkflowCheckpointTimeout(
                     f"Checkpoint timed out after {timeout_seconds}s"
@@ -433,7 +424,7 @@ class Workflow(ABC):
         """Called before checkpoint. Override to customize checkpoint behavior."""
         pass
 
-    async def on_complete(self, result: Dict[str, Any]) -> None:
+    async def on_complete(self, result: dict[str, Any]) -> None:
         """Called after workflow completes successfully."""
         pass
 

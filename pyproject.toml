@@ -70,6 +70,13 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
 
+[tool.flake8]
+# Ignore W503/W504 which conflict with Black formatter
+# Black prefers line break before binary operator (W503)
+extend-ignore = ["W503", "W504", "E203"]
+max-line-length = 100
+exclude = [".venv", ".git", "__pycache__", "build", "dist"]
+
 [tool.pytest.ini_options]
 minversion = "7.4"
 addopts = "-ra -q --strict-markers --tb=short"

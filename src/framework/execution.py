@@ -6,11 +6,10 @@ and JSON-based state storage with file locking for concurrent safety.
 """
 
 import json
-import uuid
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -33,7 +32,7 @@ class StepResult(BaseModel):
 
     name: str
     status: str = Field(description="Step status: success, failed, skipped")
-    output: Optional[Dict[str, Any]] = Field(default=None, description="Step output data")
+    output: Optional[dict[str, Any]] = Field(default=None, description="Step output data")
     error: Optional[str] = Field(default=None, description="Error message if failed")
     duration_seconds: Optional[float] = Field(default=None, description="Execution duration")
     retry_count: int = Field(default=0, description="Number of retries")
@@ -44,9 +43,9 @@ class CheckpointState(BaseModel):
     """State of a checkpoint in the execution."""
 
     checkpoint_id: str
-    question: Dict[str, Any] = Field(description="Question posed to agent")
-    response: Optional[Dict[str, Any]] = Field(default=None, description="Agent's response")
-    state_snapshot: Optional[Dict[str, Any]] = Field(
+    question: dict[str, Any] = Field(description="Question posed to agent")
+    response: Optional[dict[str, Any]] = Field(default=None, description="Agent's response")
+    state_snapshot: Optional[dict[str, Any]] = Field(
         default=None, description="Workflow state at checkpoint"
     )
     timeout_seconds: int = Field(default=300, description="Response timeout")
@@ -60,8 +59,8 @@ class ExecutionStateData(BaseModel):
     execution_id: str
     state: ExecutionState
     base_url: str
-    input_params: Dict[str, Any] = Field(default_factory=dict)
-    output: Optional[Dict[str, Any]] = Field(default=None)
+    input_params: dict[str, Any] = Field(default_factory=dict)
+    output: Optional[dict[str, Any]] = Field(default=None)
     error_message: Optional[str] = Field(default=None)
     error_code: Optional[str] = Field(default=None)
     steps: list[StepResult] = Field(default_factory=list, description="Completed steps")
@@ -69,10 +68,10 @@ class ExecutionStateData(BaseModel):
         default_factory=list, description="Checkpoints encountered"
     )
     current_step: Optional[str] = Field(default=None, description="Currently executing step")
-    workflow_state: Dict[str, Any] = Field(
+    workflow_state: dict[str, Any] = Field(
         default_factory=dict, description="User-defined workflow state"
     )
-    resources: list[Dict[str, Any]] = Field(
+    resources: list[dict[str, Any]] = Field(
         default_factory=list, description="Tracked artifacts (screenshots, PDFs)"
     )
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
@@ -97,8 +96,7 @@ class Execution:
         execution_id: Optional[str] = None,
         base_url: str = "",
         data_dir: Optional[Path] = None,
-        max_retries: int = 3,
-    ):
+        max_retries: int = 3):
         """Initialize execution with optional ID and configuration.
 
         Args:
@@ -121,7 +119,7 @@ class Execution:
             execution_id=self.execution_id, base_url=base_url, state=ExecutionState.PENDING
         )
 
-    def start(self, input_params: Dict[str, Any]) -> None:
+    def start(self, input_params: dict[str, Any]) -> None:
         """Transition execution from PENDING to RUNNING.
 
         Args:
@@ -134,8 +132,7 @@ class Execution:
             raise WorkflowStateError(
                 "Cannot start execution that is not in PENDING state",
                 current_state=self._state.state.value,
-                requested_state="running",
-            )
+                requested_state="running")
 
         self._state.state = ExecutionState.RUNNING
         self._state.input_params = input_params
@@ -155,15 +152,14 @@ class Execution:
             raise WorkflowStateError(
                 "Can only pause execution that is RUNNING",
                 current_state=self._state.state.value,
-                requested_state="paused",
-            )
+                requested_state="paused")
 
         self._state.state = ExecutionState.PAUSED
         self._state.paused_at = datetime.utcnow().isoformat()
         self._state.checkpoints.append(checkpoint)
         self.save()
 
-    def resume(self, response: Optional[Dict[str, Any]] = None) -> None:
+    def resume(self, response: Optional[dict[str, Any]] = None) -> None:
         """Transition execution from PAUSED back to RUNNING.
 
         Args:
@@ -176,8 +172,7 @@ class Execution:
             raise WorkflowStateError(
                 "Can only resume execution that is PAUSED",
                 current_state=self._state.state.value,
-                requested_state="running",
-            )
+                requested_state="running")
 
         # Update latest checkpoint with response if provided
         if response is not None and self._state.checkpoints:
@@ -188,7 +183,7 @@ class Execution:
         self._state.resumed_at = datetime.utcnow().isoformat()
         self.save()
 
-    def complete(self, output: Optional[Dict[str, Any]] = None) -> None:
+    def complete(self, output: Optional[dict[str, Any]] = None) -> None:
         """Transition execution to COMPLETED state.
 
         Args:
@@ -201,8 +196,7 @@ class Execution:
             raise WorkflowStateError(
                 "Can only complete execution that is RUNNING or PAUSED",
                 current_state=self._state.state.value,
-                requested_state="completed",
-            )
+                requested_state="completed")
 
         self._state.state = ExecutionState.COMPLETED
         self._state.output = output
@@ -223,8 +217,7 @@ class Execution:
             raise WorkflowStateError(
                 f"Cannot fail execution in terminal state {self._state.state.value}",
                 current_state=self._state.state.value,
-                requested_state="failed",
-            )
+                requested_state="failed")
 
         self._state.state = ExecutionState.FAILED
         self._state.error_message = error_message
@@ -242,8 +235,7 @@ class Execution:
             raise WorkflowStateError(
                 f"Cannot cancel execution in terminal state {self._state.state.value}",
                 current_state=self._state.state.value,
-                requested_state="cancelled",
-            )
+                requested_state="cancelled")
 
         self._state.state = ExecutionState.CANCELLED
         self._state.completed_at = datetime.utcnow().isoformat()
@@ -314,9 +306,8 @@ class Execution:
         return self._state.state in (
             ExecutionState.COMPLETED,
             ExecutionState.FAILED,
-            ExecutionState.CANCELLED,
-        )
+            ExecutionState.CANCELLED)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Export execution state as dictionary."""
         return self._state.model_dump(exclude_none=False)

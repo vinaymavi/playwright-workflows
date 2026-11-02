@@ -5,9 +5,8 @@ Implements atomic writes and recovery for crash safety.
 """
 
 import json
-import os
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from ..utils.logging import setup_logger
 
@@ -44,7 +43,7 @@ class StateManager:
         safe_key = "".join(c for c in key if c.isalnum() or c in "-_")
         return self.state_dir / f"{safe_key}.json"
 
-    def save(self, key: str, state: Dict[str, Any]) -> None:
+    def save(self, key: str, state: dict[str, Any]) -> None:
         """Save state to persistent storage with atomic write.
 
         Writes to temporary file first, then atomically renames to ensure
@@ -73,7 +72,7 @@ class StateManager:
                 temp_path.unlink()
             raise
 
-    def load(self, key: str) -> Optional[Dict[str, Any]]:
+    def load(self, key: str) -> Optional[dict[str, Any]]:
         """Load state from persistent storage.
 
         Args:
@@ -165,7 +164,7 @@ class StateManager:
 
         logger.info("State manager cleared")
 
-    def update(self, key: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+    def update(self, key: str, updates: dict[str, Any]) -> dict[str, Any]:
         """Load, merge updates, and save state (atomic operation).
 
         Args:
@@ -233,7 +232,7 @@ class StateManager:
 
         return current
 
-    def set_nested(self, key: str, path: str, value: Any) -> Dict[str, Any]:
+    def set_nested(self, key: str, path: str, value: Any) -> dict[str, Any]:
         """Set nested value using dot notation path.
 
         Args:

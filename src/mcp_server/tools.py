@@ -4,14 +4,11 @@ Implements start_workflow, resolve_checkpoint, get_execution_status,
 and get_execution_logs tools per contracts/mcp_tools.json.
 """
 
-import asyncio
 import json
 import logging
-import os
-import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from .notifications import NotificationService
 
@@ -20,10 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 # Placeholder for workflow registry - will be populated when workflows are registered
-_workflow_registry: Dict[str, Any] = {}
+_workflow_registry: dict[str, Any] = {}
 
 # Placeholder for active executions - in-memory store of execution IDs
-_active_executions: Dict[str, Any] = {}
+_active_executions: dict[str, Any] = {}
 
 # Data directory for execution state storage (configurable via environment variable)
 _DATA_DIR_ENV = os.getenv("WORKFLOW_DATA_DIR")
@@ -49,18 +46,17 @@ def get_data_dir() -> Path:
 
 async def start_workflow_impl(
     workflow_type: str,
-    input_params: Optional[Dict[str, Any]] = None,
+    input_params: Optional[dict[str, Any]] = None,
     max_retries: int = 3,
-    timeout_seconds: int = 3600,
-) -> Dict[str, Any]:
+    timeout_seconds: int = 3600) -> dict[str, Any]:
     """Start a new workflow execution.
-    
+
     Args:
         workflow_type: Type/name of workflow (e.g., 'login_workflow')
         input_params: Workflow-specific input parameters
         max_retries: Max retries for transient errors (0-10, default 3)
         timeout_seconds: Hard timeout for workflow execution (min 10, default 3600)
-    
+
     Returns:
         {
             "execution_id": "uuid",
@@ -113,13 +109,12 @@ async def start_workflow_impl(
         asyncio.create_task(_execute_workflow(execution_id, workflow_class, input_params or {}))
 
         logger.info(
-            f"Started workflow execution",
+            "Started workflow execution",
             extra={
                 "execution_id": execution_id,
                 "workflow_type": workflow_type,
                 "event": "workflow_started",
-            },
-        )
+            })
 
         return {
             "execution_id": execution_id,
@@ -136,17 +131,16 @@ async def start_workflow_impl(
 async def resolve_checkpoint_impl(
     execution_id: str,
     checkpoint_id: str,
-    decision: Dict[str, Any],
-    agent_id: str = "unknown",
-) -> Dict[str, Any]:
+    decision: dict[str, Any],
+    agent_id: str = "unknown") -> dict[str, Any]:
     """Resolve a checkpoint by providing agent decision.
-    
+
     Args:
         execution_id: UUID of execution to resume
         checkpoint_id: UUID of checkpoint to resolve
         decision: Agent's decision response
         agent_id: Identifier of agent making decision (for audit)
-    
+
     Returns:
         {
             "execution_id": "uuid",
@@ -192,14 +186,13 @@ async def resolve_checkpoint_impl(
         # Signal the workflow to resume (via event or queue)
         # This is handled by the workflow execution loop waiting on checkpoint resolution
         logger.info(
-            f"Resolved checkpoint",
+            "Resolved checkpoint",
             extra={
                 "execution_id": execution_id,
                 "checkpoint_id": checkpoint_id,
                 "agent_id": agent_id,
                 "event": "checkpoint_resolved",
-            },
-        )
+            })
 
         return {
             "execution_id": execution_id,
@@ -213,12 +206,12 @@ async def resolve_checkpoint_impl(
         return {"error": str(e), "error_type": type(e).__name__}
 
 
-async def get_execution_status_impl(execution_id: str) -> Dict[str, Any]:
+async def get_execution_status_impl(execution_id: str) -> dict[str, Any]:
     """Get current status and progress of workflow execution.
-    
+
     Args:
         execution_id: UUID of execution to query
-    
+
     Returns:
         {
             "execution_id": "uuid",
@@ -280,17 +273,16 @@ async def get_execution_logs_impl(
     event_type: Optional[str] = None,
     level: Optional[str] = None,
     limit: int = 100,
-    offset: int = 0,
-) -> Dict[str, Any]:
+    offset: int = 0) -> dict[str, Any]:
     """Retrieve structured execution logs with optional filtering.
-    
+
     Args:
         execution_id: UUID of execution
         event_type: Filter by event type (step_started, step_completed, etc.)
         level: Filter by log level (debug, info, warning, error)
         limit: Max logs to return (1-1000, default 100)
         offset: Pagination offset (default 0)
-    
+
     Returns:
         {
             "execution_id": "uuid",
@@ -412,13 +404,13 @@ async def get_execution_logs_impl(
 
 
 async def _execute_workflow(
-    execution_id: str, workflow_class: Any, input_params: Dict[str, Any]
+    execution_id: str, workflow_class: Any, input_params: dict[str, Any]
 ) -> None:
     """Execute workflow in background, updating execution state.
-    
+
     Runs the workflow asynchronously, updating the execution state file
     with progress, checkpoints, and final result.
-    
+
     Args:
         execution_id: Unique execution identifier
         workflow_class: Workflow class to instantiate and run
@@ -458,19 +450,17 @@ async def _execute_workflow(
         _active_executions[execution_id] = execution_state
 
         logger.info(
-            f"Workflow execution completed",
+            "Workflow execution completed",
             extra={
                 "execution_id": execution_id,
                 "event": "execution_completed",
-            },
-        )
+            })
 
         # Send completion notification
         notification_service = NotificationService()
         await notification_service.send_notification(
             "execution_completed",
-            {"execution_id": execution_id, "result": result},
-        )
+            {"execution_id": execution_id, "result": result})
 
     except Exception as e:
         logger.error(f"Workflow execution failed: {e}", exc_info=True)
@@ -495,5 +485,4 @@ async def _execute_workflow(
         notification_service = NotificationService()
         await notification_service.send_notification(
             "execution_failed",
-            {"execution_id": execution_id, "error": str(e)},
-        )
+            {"execution_id": execution_id, "error": str(e)})

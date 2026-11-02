@@ -1,0 +1,6 @@
+[flake8]
+# Ignore W503/W504 which conflict with Black formatter
+# Black prefers line break before binary operator (W503)
+extend-ignore = W503, W504, E203
+max-line-length = 100
+exclude = .venv,.git,__pycache__,build,dist,.pytest_cache

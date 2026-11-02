@@ -1,7 +1,6 @@
 """Example LoginWorkflow demonstrating web automation with the framework."""
 
-import uuid
-from typing import Optional, Dict, Any
+from typing import Optional, Any
 from src.framework import Workflow, step
 from src.framework.errors import WorkflowError, WorkflowCheckpointTimeout
 from src.framework.checkpoint import CheckpointQuestion, CheckpointDecision
@@ -46,8 +45,7 @@ class LoginWorkflow(Workflow):
     def __init__(
         self,
         execution_id: str | None = None,
-        base_url: str = "http://localhost:8000",
-    ):
+        base_url: str = "http://localhost:8000"):
         """Initialize LoginWorkflow."""
         # Generate execution_id if not provided (for testing)
         if execution_id is None:
@@ -55,8 +53,7 @@ class LoginWorkflow(Workflow):
 
         super().__init__(
             execution_id=execution_id,
-            base_url=base_url,
-        )
+            base_url=base_url)
         self.input: LoginInput | None = None
         self.output: LoginOutput | None = None
 
@@ -112,16 +109,14 @@ class LoginWorkflow(Workflow):
                     "username": self.input.username,
                     "password": "***",  # Masked for security
                 },
-            },
-        )
+            })
 
         try:
             # Request decision from agent (waits here until response received)
             response = await self.checkpoint(
                 question=question,
                 timeout_seconds=300,  # 5 minutes default timeout
-                allow_skip=False,
-            )
+                allow_skip=False)
 
             # Return the decision
             return response.decision
@@ -167,14 +162,12 @@ class LoginWorkflow(Workflow):
             if decision.choice == "cancel":
                 self.output = LoginOutput(
                     success=False,
-                    message="Login cancelled by agent",
-                )
+                    message="Login cancelled by agent")
                 raise WorkflowError("Login cancelled by agent")
             elif decision.choice != "proceed":
                 self.output = LoginOutput(
                     success=False,
-                    message=f"Invalid decision: {decision.choice}",
-                )
+                    message=f"Invalid decision: {decision.choice}")
                 raise WorkflowError(f"Invalid checkpoint decision: {decision.choice}")
 
             # Agent approved, proceed with submission
@@ -187,8 +180,7 @@ class LoginWorkflow(Workflow):
                 success=True,
                 message="Login successful",
                 dashboard_url=dashboard_url,
-                session_id="session_123",
-            )
+                session_id="session_123")
 
             return self.output
 
@@ -200,21 +192,18 @@ class LoginWorkflow(Workflow):
             if "401" in error_message or "Unauthorized" in error_message:
                 self.output = LoginOutput(
                     success=False,
-                    message="Invalid credentials (401 Unauthorized)",
-                )
+                    message="Invalid credentials (401 Unauthorized)")
             elif "403" in error_message or "Forbidden" in error_message:
                 self.output = LoginOutput(
                     success=False,
-                    message="Access forbidden (403)",
-                )
+                    message="Access forbidden (403)")
             elif "cancelled by agent" in error_message.lower():
                 # Don't re-wrap cancellation messages
                 raise
             else:
                 self.output = LoginOutput(
                     success=False,
-                    message=f"Login failed: {error_message}",
-                )
+                    message=f"Login failed: {error_message}")
 
             # Re-raise for framework to handle
             raise WorkflowError(f"Login workflow failed: {error_message}") from e

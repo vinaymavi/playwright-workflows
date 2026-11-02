@@ -6,18 +6,16 @@ Sends notifications to MCP client when workflow events occur:
 - execution_failed: Workflow failed with error
 """
 
-import asyncio
-import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class NotificationService:
     """Manages MCP notifications to client.
-    
+
     In a real implementation, this would be connected to the MCP server's
     notification system. For now, it queues notifications for the server
     to send to connected clients.
@@ -40,10 +38,10 @@ class NotificationService:
         return cls._notification_queue
 
     async def send_notification(
-        self, notification_type: str, payload: Dict[str, Any]
+        self, notification_type: str, payload: dict[str, Any]
     ) -> None:
         """Send a notification to the MCP client.
-        
+
         Args:
             notification_type: Type of notification (checkpoint_requested, execution_completed, execution_failed)
             payload: Notification payload (JSON-serializable dict)
@@ -57,8 +55,7 @@ class NotificationService:
 
             logger.debug(
                 f"Sending {notification_type} notification",
-                extra={"event": notification_type, "context": payload},
-            )
+                extra={"event": notification_type, "context": payload})
 
             # If server is set, send directly
             if self._server_instance:
@@ -78,10 +75,10 @@ class NotificationService:
 
     @classmethod
     async def checkpoint_requested(
-        cls, execution_id: str, checkpoint_id: str, question: Dict[str, Any]
+        cls, execution_id: str, checkpoint_id: str, question: dict[str, Any]
     ) -> None:
         """Send checkpoint_requested notification.
-        
+
         Args:
             execution_id: Execution identifier
             checkpoint_id: Checkpoint identifier
@@ -94,13 +91,12 @@ class NotificationService:
                 "execution_id": execution_id,
                 "checkpoint_id": checkpoint_id,
                 "question": question,
-            },
-        )
+            })
 
     @classmethod
-    async def execution_completed(cls, execution_id: str, result: Dict[str, Any]) -> None:
+    async def execution_completed(cls, execution_id: str, result: dict[str, Any]) -> None:
         """Send execution_completed notification.
-        
+
         Args:
             execution_id: Execution identifier
             result: Workflow execution result
@@ -108,13 +104,12 @@ class NotificationService:
         service = cls()
         await service.send_notification(
             "execution_completed",
-            {"execution_id": execution_id, "result": result},
-        )
+            {"execution_id": execution_id, "result": result})
 
     @classmethod
     async def execution_failed(cls, execution_id: str, error: str) -> None:
         """Send execution_failed notification.
-        
+
         Args:
             execution_id: Execution identifier
             error: Error message
@@ -125,9 +120,9 @@ class NotificationService:
         )
 
     @classmethod
-    async def get_pending_notifications(cls) -> list[Dict[str, Any]]:
+    async def get_pending_notifications(cls) -> list[dict[str, Any]]:
         """Get all pending notifications from the queue.
-        
+
         Returns:
             List of pending notifications
         """

@@ -4,14 +4,12 @@ Provides the Action base class that encapsulates reusable workflow logic.
 Actions inherit logging, error handling, and retry behavior from the framework.
 """
 
-import asyncio
 import inspect
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from ..utils.logging import setup_logger
 from .errors import PermanentError, TransientError
-from .execution import Execution, StepResult
 from .retry_handler import ErrorClassifier, RetryPolicy, with_retry, with_retry_sync
 
 logger = setup_logger(__name__)
@@ -31,7 +29,7 @@ class Action(ABC):
 
     Example:
         class FillFormAction(Action):
-            async def execute(self, form_data: Dict[str, str]) -> Dict[str, Any]:
+            async def execute(self, form_data: dict[str, str]) -> dict[str, Any]:
                 '''Fill form fields with provided data.'''
                 page = self.workflow_context.page
                 for selector, value in form_data.items():
@@ -44,8 +42,7 @@ class Action(ABC):
         workflow_context: Any,
         name: Optional[str] = None,
         max_retries: int = 3,
-        requires: Optional[List[str]] = None,
-    ):
+        requires: Optional[list[str]] = None):
         """Initialize an action with workflow context and configuration.
 
         Args:
@@ -112,15 +109,13 @@ class Action(ABC):
                     self.execute,
                     policy=self._retry_policy,
                     step_name=self.name,
-                    **kwargs,
-                )
+                    **kwargs)
             else:
                 result = with_retry_sync(
                     self.execute,
                     policy=self._retry_policy,
                     step_name=self.name,
-                    **kwargs,
-                )
+                    **kwargs)
 
             logger.debug(f"Action succeeded: {self.name}")
 
@@ -128,8 +123,7 @@ class Action(ABC):
             step_result = StepResult(
                 name=self.name,
                 status="success",
-                output=result if not inspect.iscoroutine(result) else None,
-            )
+                output=result if not inspect.iscoroutine(result) else None)
 
             # Track result if execution tracking is available
             self._track_step_result(step_result)
@@ -145,8 +139,7 @@ class Action(ABC):
                 name=self.name,
                 status="failed",
                 error=str(e),
-                retry_count=self.max_retries if not is_transient else 0,
-            )
+                retry_count=self.max_retries if not is_transient else 0)
 
             # Track result if execution tracking is available
             self._track_step_result(step_result)
@@ -158,14 +151,12 @@ class Action(ABC):
                         "action": self.name,
                         "error_type": type(e).__name__,
                         "max_retries": self.max_retries,
-                    },
-                )
+                    })
                 raise TransientError(self.name, str(e), cause=e)
             else:
                 logger.error(
                     f"Permanent error in action '{self.name}': {e}",
-                    extra={"action": self.name, "error_type": type(e).__name__},
-                )
+                    extra={"action": self.name, "error_type": type(e).__name__})
                 raise PermanentError(self.name, str(e), cause=e)
 
     def _track_step_result(self, step_result: StepResult) -> None:
@@ -177,7 +168,7 @@ class Action(ABC):
         if hasattr(self.workflow_context, "_execution") and self.workflow_context._execution:
             self.workflow_context._execution.add_step_result(step_result)
 
-    def get_dependencies(self) -> List[str]:
+    def get_dependencies(self) -> list[str]:
         """Get list of action names this action depends on.
 
         Returns:

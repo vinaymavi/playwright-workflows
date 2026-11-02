@@ -63,8 +63,7 @@ class StepError(WorkflowError):
         step_name: str,
         message: str,
         error_type: str = "unknown",
-        cause: Optional[Exception] = None,
-    ):
+        cause: Optional[Exception] = None):
         """
         Initialize step error.
 
@@ -103,8 +102,7 @@ class WorkflowStateError(WorkflowError):
         message: str = "Invalid state transition",
         current_state: Optional[str] = None,
         requested_state: Optional[str] = None,
-        cause: Optional[Exception] = None,
-    ):
+        cause: Optional[Exception] = None):
         """
         Initialize state error.
 

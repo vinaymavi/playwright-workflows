@@ -4,7 +4,7 @@ Defines structures for pausing workflow execution and requesting agent/human
 decisions via JSON-RPC 2.0 MCP protocol.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -17,7 +17,7 @@ class CheckpointQuestion(BaseModel):
         description="Question type: single_choice, multi_choice, free_text, yes_no"
     )
     options: Optional[list[str]] = Field(default=None, description="Available choices")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional context")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional context")
 
 
 class CheckpointDecision(BaseModel):
@@ -27,7 +27,7 @@ class CheckpointDecision(BaseModel):
     choices: Optional[list[str]] = Field(default=None, description="Selected options (multi_choice)")
     text: Optional[str] = Field(default=None, description="Free-form response text")
     confirmed: bool = Field(default=False, description="For yes_no questions")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
     def is_valid(self) -> bool:
         """Check if decision contains at least one response."""
@@ -43,9 +43,9 @@ class CheckpointRequest(BaseModel):
     step_name: str = Field(description="Name of step that triggered checkpoint")
     question: CheckpointQuestion
     timeout_seconds: int = Field(default=300, description="Response timeout")
-    context: Dict[str, Any] = Field(default_factory=dict, description="Workflow context/state")
+    context: dict[str, Any] = Field(default_factory=dict, description="Workflow context/state")
 
-    def to_mcp_request(self) -> Dict[str, Any]:
+    def to_mcp_request(self) -> dict[str, Any]:
         """Convert to MCP JSON-RPC 2.0 request format for transport.
 
         Returns:
@@ -71,7 +71,7 @@ class CheckpointResponse(BaseModel):
     timestamp: Optional[str] = Field(default=None, description="ISO timestamp of response")
 
     @staticmethod
-    def from_mcp_response(data: Dict[str, Any]) -> "CheckpointResponse":
+    def from_mcp_response(data: dict[str, Any]) -> "CheckpointResponse":
         """Create CheckpointResponse from MCP JSON-RPC response.
 
         Args:
@@ -84,8 +84,7 @@ class CheckpointResponse(BaseModel):
             checkpoint_id=data.get("checkpoint_id"),
             execution_id=data.get("execution_id"),
             decision=CheckpointDecision(**data.get("decision", {})),
-            timestamp=data.get("timestamp"),
-        )
+            timestamp=data.get("timestamp"))
 
 
 class CheckpointProtocol:
@@ -101,8 +100,7 @@ class CheckpointProtocol:
 
     async def request_decision(
         self,
-        checkpoint_request: CheckpointRequest,
-    ) -> Optional[CheckpointResponse]:
+        checkpoint_request: CheckpointRequest) -> Optional[CheckpointResponse]:
         """Send checkpoint request to agent and wait for response.
 
         Args:
@@ -117,8 +115,7 @@ class CheckpointProtocol:
         try:
             response_data = await self.mcp_client.call_tool(
                 "workflow_checkpoint",
-                checkpoint_request.to_mcp_request(),
-            )
+                checkpoint_request.to_mcp_request())
             return CheckpointResponse.from_mcp_response(response_data)
         except Exception as e:
             raise RuntimeError(f"Failed to request checkpoint decision: {e}")
@@ -126,8 +123,7 @@ class CheckpointProtocol:
     def validate_decision(
         self,
         decision: CheckpointDecision,
-        question: CheckpointQuestion,
-    ) -> tuple[bool, Optional[str]]:
+        question: CheckpointQuestion) -> tuple[bool, Optional[str]]:
         """Validate agent decision against question constraints.
 
         Args:

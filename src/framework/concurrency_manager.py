@@ -4,11 +4,9 @@ Manages concurrent workflow instances with resource quotas, semaphore-based
 concurrency limiting, and task group orchestration.
 """
 
-import asyncio
-import uuid
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from ..utils.logging import setup_logger
 
@@ -33,7 +31,7 @@ class ResourceQuota:
     max_memory_mb: int = 512  # Max memory per execution in MB
     max_timeout_seconds: int = 3600  # Max execution timeout (1 hour)
 
-    def to_dict(self) -> Dict[str, int]:
+    def to_dict(self) -> dict[str, int]:
         """Convert quota to dictionary."""
         return {
             QuotaType.MAX_BROWSER_PAGES.value: self.max_browser_pages,
@@ -43,14 +41,13 @@ class ResourceQuota:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, int]) -> "ResourceQuota":
+    def from_dict(cls, data: dict[str, int]) -> "ResourceQuota":
         """Create quota from dictionary."""
         return cls(
             max_browser_pages=data.get(QuotaType.MAX_BROWSER_PAGES.value, 10),
             max_agent_concurrency=data.get(QuotaType.MAX_AGENT_CONCURRENCY.value, 2),
             max_memory_mb=data.get(QuotaType.MAX_MEMORY_MB.value, 512),
-            max_timeout_seconds=data.get(QuotaType.MAX_TIMEOUT_SECONDS.value, 3600),
-        )
+            max_timeout_seconds=data.get(QuotaType.MAX_TIMEOUT_SECONDS.value, 3600))
 
 
 @dataclass
@@ -78,8 +75,7 @@ class ConcurrencyManager:
     def __init__(
         self,
         max_concurrent: int = 5,
-        default_quota: Optional[ResourceQuota] = None,
-    ):
+        default_quota: Optional[ResourceQuota] = None):
         """Initialize concurrency manager.
 
         Args:
@@ -91,15 +87,14 @@ class ConcurrencyManager:
         self.default_quota = default_quota or ResourceQuota()
 
         # Track active executions and their quotas
-        self._active_executions: Dict[str, Dict[str, Any]] = {}
-        self._execution_metrics: Dict[str, ExecutionMetrics] = {}
-        self._execution_quotas: Dict[str, ResourceQuota] = {}  # Track quotas set before acquisition
+        self._active_executions: dict[str, dict[str, Any]] = {}
+        self._execution_metrics: dict[str, ExecutionMetrics] = {}
+        self._execution_quotas: dict[str, ResourceQuota] = {}  # Track quotas set before acquisition
         self._execution_lock = asyncio.Lock()
 
         logger.info(
             f"ConcurrencyManager initialized with max_concurrent={max_concurrent}",
-            extra={"default_quota": self.default_quota.to_dict()},
-        )
+            extra={"default_quota": self.default_quota.to_dict()})
 
     async def acquire_execution_slot(self, execution_id: str) -> None:
         """Acquire a concurrency slot for an execution.
@@ -125,13 +120,11 @@ class ConcurrencyManager:
             }
             self._execution_metrics[execution_id] = ExecutionMetrics(
                 execution_id=execution_id,
-                start_time=asyncio.get_event_loop().time(),
-            )
+                start_time=asyncio.get_event_loop().time())
 
             logger.info(
                 f"Execution slot acquired for: {execution_id}",
-                extra={"total_active": len(self._active_executions)},
-            )
+                extra={"total_active": len(self._active_executions)})
 
     async def release_execution_slot(self, execution_id: str) -> None:
         """Release concurrency slot for an execution.
@@ -149,8 +142,7 @@ class ConcurrencyManager:
 
             logger.info(
                 f"Execution slot released for: {execution_id}",
-                extra={"total_active": len(self._active_executions)},
-            )
+                extra={"total_active": len(self._active_executions)})
 
     async def register_browser_page(
         self, execution_id: str, page_id: str
@@ -185,8 +177,7 @@ class ConcurrencyManager:
                     "page_id": page_id,
                     "current_pages": metrics.current_browser_pages,
                     "max_pages": quota.max_browser_pages,
-                },
-            )
+                })
 
     async def unregister_browser_page(
         self, execution_id: str, page_id: str
@@ -208,8 +199,7 @@ class ConcurrencyManager:
                     extra={
                         "page_id": page_id,
                         "current_pages": metrics.current_browser_pages,
-                    },
-                )
+                    })
 
     async def acquire_agent_slot(self, execution_id: str) -> None:
         """Acquire a slot for an agent call.
@@ -240,8 +230,7 @@ class ConcurrencyManager:
                 extra={
                     "current_tasks": metrics.current_agent_tasks,
                     "max_tasks": quota.max_agent_concurrency,
-                },
-            )
+                })
 
     async def release_agent_slot(self, execution_id: str) -> None:
         """Release an agent slot.
@@ -257,8 +246,7 @@ class ConcurrencyManager:
 
                 logger.debug(
                     f"Agent slot released for execution: {execution_id}",
-                    extra={"current_tasks": metrics.current_agent_tasks},
-                )
+                    extra={"current_tasks": metrics.current_agent_tasks})
 
     async def set_execution_quota(
         self, execution_id: str, quota: ResourceQuota
@@ -277,8 +265,7 @@ class ConcurrencyManager:
 
         logger.debug(
             f"Execution quota set for: {execution_id}",
-            extra={"quota": quota.to_dict()},
-        )
+            extra={"quota": quota.to_dict()})
 
     def _get_execution_quota(self, execution_id: str) -> ResourceQuota:
         """Get resource quota for an execution.
@@ -313,7 +300,7 @@ class ConcurrencyManager:
         async with self._execution_lock:
             return self._execution_metrics.get(execution_id)
 
-    async def get_all_metrics(self) -> Dict[str, ExecutionMetrics]:
+    async def get_all_metrics(self) -> dict[str, ExecutionMetrics]:
         """Get metrics for all active executions.
 
         Returns:
@@ -342,8 +329,7 @@ class ConcurrencyManager:
                 extra={
                     "elapsed": metrics.elapsed_seconds,
                     "max_timeout": quota.max_timeout_seconds,
-                },
-            )
+                })
             return True
 
         return False

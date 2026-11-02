@@ -1,7 +1,6 @@
 """Form filling workflow using reusable action framework."""
 
-import uuid
-from typing import Optional, Dict, Any, List
+from typing import Optional, Any, 
 from dataclasses import dataclass
 from src.framework import Workflow, step
 from src.framework.action_registry import ActionRegistry
@@ -24,7 +23,7 @@ class FormFillingInput:
 
     url: str
     form_selector: str
-    fields: List[FormField]
+    fields: list[FormField]
     submit_button_selector: str
     wait_for_element: Optional[str] = None  # Element to wait for after submission
     username_selector: Optional[str] = None  # For login forms
@@ -39,7 +38,7 @@ class FormFillingOutput:
     success: bool
     message: str
     submitted_at: Optional[str] = None
-    verification_result: Optional[Dict[str, Any]] = None
+    verification_result: Optional[dict[str, Any]] = None
 
 
 class FormFillingWorkflow(Workflow):
@@ -60,16 +59,14 @@ class FormFillingWorkflow(Workflow):
     def __init__(
         self,
         execution_id: str | None = None,
-        base_url: str = "http://localhost:8000",
-    ):
+        base_url: str = "http://localhost:8000"):
         """Initialize FormFillingWorkflow."""
         if execution_id is None:
             execution_id = str(uuid.uuid4())
 
         super().__init__(
             execution_id=execution_id,
-            base_url=base_url,
-        )
+            base_url=base_url)
         self.input: FormFillingInput | None = None
         self.output: FormFillingOutput | None = None
         self.action_registry = ActionRegistry()
@@ -84,7 +81,7 @@ class FormFillingWorkflow(Workflow):
         await self.wait_for_selector(self.input.form_selector, timeout_ms=10000)
 
     @step(name="Fill Form Fields", max_retries=1)
-    async def fill_form_fields(self) -> Dict[str, Any]:
+    async def fill_form_fields(self) -> dict[str, Any]:
         """Fill form fields using actions."""
         if not self.input or not self.input.fields:
             raise WorkflowError("Form fields not provided")
@@ -103,8 +100,7 @@ class FormFillingWorkflow(Workflow):
         # Execute form filling action
         result = await fill_action.run(
             field_mapping=field_mapping,
-            wait_ms=5000,
-        )
+            wait_ms=5000)
 
         # Handle checkbox fields separately
         for field in self.input.fields:
@@ -112,8 +108,7 @@ class FormFillingWorkflow(Workflow):
                 checkbox_action_class = self.action_registry.get("CheckCheckboxAction")
                 checkbox_action = checkbox_action_class(self)
                 await checkbox_action.run(
-                    selector=field.selector,
-                )
+                    selector=field.selector)
 
         self.logger.info(f"Form fields filled: {len(self.input.fields)} fields")
         return result
@@ -138,16 +133,14 @@ class FormFillingWorkflow(Workflow):
                 "current_page": self._page.url if self._page else None,
                 "form_selector": self.input.form_selector,
                 "fields_count": len(self.input.fields) if self.input.fields else 0,
-            },
-        )
+            })
 
         try:
             # Request decision from agent
             response = await self.checkpoint(
                 question=question,
                 timeout_seconds=300,
-                allow_skip=False,
-            )
+                allow_skip=False)
 
             return response.decision
 
@@ -157,7 +150,7 @@ class FormFillingWorkflow(Workflow):
             )
 
     @step(name="Submit Form", max_retries=2)
-    async def submit_form(self) -> Dict[str, Any]:
+    async def submit_form(self) -> dict[str, Any]:
         """Submit the form using action."""
         if not self.input:
             raise WorkflowError("Input not provided")
@@ -168,13 +161,12 @@ class FormFillingWorkflow(Workflow):
 
         result = await submit_action.run(
             selector=self.input.submit_button_selector,
-            wait_ms=10000,
-        )
+            wait_ms=10000)
 
         return result
 
     @step(name="Verify Form Submission", max_retries=2, timeout_ms=10000)
-    async def verify_submission(self) -> Dict[str, Any]:
+    async def verify_submission(self) -> dict[str, Any]:
         """Verify the form was submitted successfully."""
         if not self.input:
             raise WorkflowError("Input not provided")
@@ -185,8 +177,7 @@ class FormFillingWorkflow(Workflow):
         if self.input.wait_for_element:
             await self.wait_for_selector(
                 self.input.wait_for_element,
-                timeout_ms=10000,
-            )
+                timeout_ms=10000)
             verification_result["element_found"] = True
 
         # Verify URL change if provided
@@ -227,14 +218,12 @@ class FormFillingWorkflow(Workflow):
             if decision.choice == "cancel":
                 self.output = FormFillingOutput(
                     success=False,
-                    message="Form submission cancelled by agent",
-                )
+                    message="Form submission cancelled by agent")
                 raise WorkflowError("Form submission cancelled by agent")
             elif decision.choice != "proceed":
                 self.output = FormFillingOutput(
                     success=False,
-                    message=f"Invalid decision: {decision.choice}",
-                )
+                    message=f"Invalid decision: {decision.choice}")
                 raise WorkflowError(f"Invalid checkpoint decision: {decision.choice}")
 
             # Agent approved, proceed with submission
@@ -246,8 +235,7 @@ class FormFillingWorkflow(Workflow):
                 success=True,
                 message="Form filled and submitted successfully",
                 submitted_at=self._page.url if self._page else None,
-                verification_result=verification_result,
-            )
+                verification_result=verification_result)
 
             return self.output
 
@@ -261,8 +249,7 @@ class FormFillingWorkflow(Workflow):
             else:
                 self.output = FormFillingOutput(
                     success=False,
-                    message=f"Form filling failed: {error_message}",
-                )
+                    message=f"Form filling failed: {error_message}")
 
             # Re-raise for framework to handle
             raise WorkflowError(f"Form filling workflow failed: {error_message}") from e

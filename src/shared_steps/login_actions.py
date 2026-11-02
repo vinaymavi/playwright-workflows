@@ -4,7 +4,7 @@ Provides common actions for authentication workflows including
 credential entry, two-factor authentication, and session verification.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from playwright.async_api import Page, TimeoutError
 
@@ -36,8 +36,7 @@ class EnterCredentialsAction(Action):
         password_selector: str,
         username: str,
         password: str,
-        wait_ms: int = 5000,
-    ) -> Dict[str, Any]:
+        wait_ms: int = 5000) -> dict[str, Any]:
         """Enter credentials into form.
 
         Args:
@@ -109,8 +108,7 @@ class SubmitLoginFormAction(Action):
         button_selector: str,
         wait_for_element: Optional[str] = None,
         wait_for_navigation: bool = True,
-        wait_ms: int = 10000,
-    ) -> Dict[str, Any]:
+        wait_ms: int = 10000) -> dict[str, Any]:
         """Submit login form.
 
         Args:
@@ -135,10 +133,10 @@ class SubmitLoginFormAction(Action):
             if wait_for_navigation:
                 async with page.expect_navigation(timeout=wait_ms):
                     await page.click(button_selector)
-                logger.debug(f"Clicked login button and waited for navigation")
+                logger.debug("Clicked login button and waited for navigation")
             else:
                 await page.click(button_selector)
-                logger.debug(f"Clicked login button")
+                logger.debug("Clicked login button")
 
             # If specific element should appear, wait for it
             if wait_for_element:
@@ -182,8 +180,7 @@ class VerifyLoginSuccessAction(Action):
         url_contains: Optional[str] = None,
         element_selector: Optional[str] = None,
         page_title_contains: Optional[str] = None,
-        wait_ms: int = 10000,
-    ) -> Dict[str, Any]:
+        wait_ms: int = 10000) -> dict[str, Any]:
         """Verify login success.
 
         Args:
@@ -288,9 +285,8 @@ class HandleLoginErrorAction(Action):
     async def execute(
         self,
         error_selector: str,
-        error_messages: Dict[str, list] = None,
-        wait_ms: int = 5000,
-    ) -> Dict[str, Any]:
+        error_messages: dict[str, list] = None,
+        wait_ms: int = 5000) -> dict[str, Any]:
         """Check for and handle login errors.
 
         Args:
@@ -347,13 +343,11 @@ class HandleLoginErrorAction(Action):
             if error_type == "invalid_credentials":
                 raise PermanentError(
                     self.name,
-                    f"Login failed with invalid credentials: {error_text}",
-                )
+                    f"Login failed with invalid credentials: {error_text}")
             elif error_type == "account_locked":
                 raise PermanentError(
                     self.name,
-                    f"Account is locked: {error_text}",
-                )
+                    f"Account is locked: {error_text}")
 
             return {
                 "error_found": True,

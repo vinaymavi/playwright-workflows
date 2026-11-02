@@ -1,6 +1,5 @@
 """File locking and atomic writes for concurrent state management."""
 
-import os
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -35,8 +34,7 @@ def atomic_write_json(file_path: Path, data: Any) -> None:
         dir=file_path.parent,
         delete=False,
         suffix=".tmp",
-        prefix=f".{file_path.name}.",
-    ) as tmp_file:
+        prefix=f".{file_path.name}.") as tmp_file:
         tmp_path = Path(tmp_file.name)
         json.dump(data, tmp_file, indent=2)
 

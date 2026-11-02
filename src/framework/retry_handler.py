@@ -4,9 +4,8 @@ Classifies errors as transient (auto-retry eligible) or permanent (escalate to c
 Implements exponential backoff retry strategy with configurable thresholds.
 """
 
-import asyncio
 import time
-from typing import Any, Awaitable, Callable, Optional, TypeVar, Union
+from typing import Any, Awaitable, Callable, Optional, TypeVar, 
 
 from .errors import PermanentError, TransientError
 from ..utils.logging import setup_logger
@@ -25,8 +24,7 @@ class RetryPolicy:
         initial_backoff_seconds: float = 1.0,
         max_backoff_seconds: float = 60.0,
         backoff_multiplier: float = 2.0,
-        jitter_enabled: bool = True,
-    ):
+        jitter_enabled: bool = True):
         """Initialize retry policy.
 
         Args:
@@ -77,8 +75,7 @@ class ErrorClassifier:
         ConnectionAbortedError,
         ConnectionResetError,
         EOFError,
-        asyncio.TimeoutError,
-    )
+        asyncio.TimeoutError)
 
     # Exception types that are always permanent
     PERMANENT_EXCEPTIONS = (
@@ -86,8 +83,7 @@ class ErrorClassifier:
         TypeError,
         KeyError,
         AttributeError,
-        AssertionError,
-    )
+        AssertionError)
 
     @classmethod
     def is_transient(cls, exception: Exception) -> bool:
@@ -153,8 +149,7 @@ class ErrorClassifier:
         cls,
         exception: Exception,
         attempt: int,
-        max_retries: int,
-    ) -> bool:
+        max_retries: int) -> bool:
         """Determine if should retry given exception and attempt count.
 
         Args:
@@ -176,8 +171,7 @@ async def with_retry(
     *args,
     policy: Optional[RetryPolicy] = None,
     step_name: str = "unknown",
-    **kwargs,
-) -> T:
+    **kwargs) -> T:
     """Execute async function with automatic retry on transient errors.
 
     Args:
@@ -215,8 +209,7 @@ async def with_retry(
                         "step": step_name,
                         "attempts": attempt + 1,
                         "error_type": type(e).__name__,
-                    },
-                )
+                    })
                 # Wrap based on error type
                 if is_last_transient:
                     raise TransientError(step_name, str(e), e)
@@ -231,8 +224,7 @@ async def with_retry(
                         "step": step_name,
                         "attempt": attempt + 1,
                         "error_type": type(e).__name__,
-                    },
-                )
+                    })
                 raise PermanentError(step_name, str(e), e)
 
             # Calculate and wait for backoff
@@ -245,8 +237,7 @@ async def with_retry(
                     "attempt": attempt + 1,
                     "error_type": type(e).__name__,
                     "backoff_seconds": backoff,
-                },
-            )
+                })
             await asyncio.sleep(backoff)
 
     # Should never reach here
@@ -262,8 +253,7 @@ def with_retry_sync(
     *args,
     policy: Optional[RetryPolicy] = None,
     step_name: str = "unknown",
-    **kwargs,
-) -> T:
+    **kwargs) -> T:
     """Execute sync function with automatic retry on transient errors.
 
     Args:
@@ -301,8 +291,7 @@ def with_retry_sync(
                         "step": step_name,
                         "attempts": attempt + 1,
                         "error_type": type(e).__name__,
-                    },
-                )
+                    })
                 # Wrap based on error type
                 if is_last_transient:
                     raise TransientError(step_name, str(e), e)
@@ -317,8 +306,7 @@ def with_retry_sync(
                         "step": step_name,
                         "attempt": attempt + 1,
                         "error_type": type(e).__name__,
-                    },
-                )
+                    })
                 raise PermanentError(step_name, str(e), e)
 
             # Calculate and wait for backoff
@@ -331,8 +319,7 @@ def with_retry_sync(
                     "attempt": attempt + 1,
                     "error_type": type(e).__name__,
                     "backoff_seconds": backoff,
-                },
-            )
+                })
             time.sleep(backoff)
 
     # Should never reach here

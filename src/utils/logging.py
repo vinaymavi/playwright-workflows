@@ -2,13 +2,9 @@
 
 import json
 import logging
-import sys
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional
-
-if TYPE_CHECKING:
-    from src.framework.execution import ExecutionContext
+from typing import Any, Optional
 
 
 class JSONFormatter(logging.Formatter):
@@ -54,8 +50,7 @@ def setup_logger(
     name: str,
     execution_id: Optional[str] = None,
     log_file: Optional[Path] = None,
-    log_level: int = logging.INFO,
-) -> logging.Logger:
+    log_level: int = logging.INFO) -> logging.Logger:
     """
     Set up a structured JSON logger.
 
@@ -95,9 +90,8 @@ def log_execution_event(
     logger: logging.Logger,
     event_type: str,
     message: str,
-    context: Optional[Dict[str, Any]] = None,
-    **extra_fields,
-) -> None:
+    context: Optional[dict[str, Any]] = None,
+    **extra_fields) -> None:
     """
     Log an execution event with structured context.
 
@@ -120,7 +114,6 @@ def log_execution_event(
         lineno=0,
         msg=message,
         args=(),
-        exc_info=None,
-    )
+        exc_info=None)
     record.extra_fields = fields
     logger.handle(record)

@@ -1,9 +1,7 @@
 """Manage execution artifacts (screenshots, PDFs, etc.)."""
 
-import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -29,15 +27,14 @@ class ResourceManager:
 
     def __init__(self, artifacts_base_dir: str = "data/artifacts"):
         self.artifacts_base_dir = Path(artifacts_base_dir)
-        self.resources: Dict[str, List[Resource]] = {}
+        self.resources: dict[str, list[Resource]] = {}
 
     def track_resource(
         self,
         execution_id: str,
         file_path: Path,
         resource_type: str = "screenshot",
-        name: Optional[str] = None,
-    ) -> Resource:
+        name: Optional[str] = None) -> Resource:
         """
         Track a newly created artifact.
 
@@ -50,7 +47,6 @@ class ResourceManager:
         Returns:
             Resource object representing the tracked artifact
         """
-        import uuid
 
         file_path = Path(file_path)
         if not file_path.exists():
@@ -65,8 +61,7 @@ class ResourceManager:
             name=name,
             file_path=str(file_path.absolute()),
             resource_type=resource_type,
-            file_size_bytes=file_size,
-        )
+            file_size_bytes=file_size)
 
         if execution_id not in self.resources:
             self.resources[execution_id] = []
@@ -74,7 +69,7 @@ class ResourceManager:
 
         return resource
 
-    def get_resources(self, execution_id: str) -> List[Resource]:
+    def get_resources(self, execution_id: str) -> list[Resource]:
         """Get all resources for an execution."""
         return self.resources.get(execution_id, [])
 
@@ -129,11 +124,11 @@ class ResourceManager:
             total_deleted += self.cleanup_execution_artifacts(execution_id)
         return total_deleted
 
-    def export_resources_json(self, execution_id: str) -> List[Dict]:
+    def export_resources_json(self, execution_id: str) -> list[Dict]:
         """Export resources as JSON-serializable dicts."""
         return [r.model_dump() for r in self.get_resources(execution_id)]
 
-    def import_resources_json(self, execution_id: str, resources_data: List[Dict]) -> None:
+    def import_resources_json(self, execution_id: str, resources_data: list[Dict]) -> None:
         """Import resources from JSON (for recovery/resume)."""
         for data in resources_data:
             resource = Resource(**data)

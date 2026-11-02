@@ -4,11 +4,10 @@ Handles browser context lifecycle, session persistence, and recovery
 for expired sessions (401/403 Unauthorized/Forbidden).
 """
 
-import asyncio
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from playwright.async_api import BrowserContext, Page
 
@@ -26,8 +25,7 @@ class SessionManager:
     def __init__(
         self,
         execution_id: str,
-        session_dir: Optional[Path] = None,
-    ):
+        session_dir: Optional[Path] = None):
         """Initialize session manager for an execution.
 
         Args:
@@ -53,8 +51,7 @@ class SessionManager:
         self,
         browser,
         base_url: str,
-        **context_kwargs,
-    ) -> BrowserContext:
+        **context_kwargs) -> BrowserContext:
         """Create or restore browser context.
 
         Attempts to restore session from previous execution if available,
@@ -76,8 +73,7 @@ class SessionManager:
         if session_data:
             logger.info(
                 f"Restoring session for execution: {self.execution_id}",
-                extra={"cookies_count": len(session_data.get("cookies", []))},
-            )
+                extra={"cookies_count": len(session_data.get("cookies", []))})
 
             # Create context with stored storage state
             self.browser_context = await browser.new_context(
@@ -86,17 +82,14 @@ class SessionManager:
                     "cookies": session_data.get("cookies", []),
                     "origins": session_data.get("origins", []),
                 },
-                **context_kwargs,
-            )
+                **context_kwargs)
         else:
             # Create fresh context
             logger.info(
-                f"Creating new browser context for execution: {self.execution_id}",
-            )
+                f"Creating new browser context for execution: {self.execution_id}")
             self.browser_context = await browser.new_context(
                 base_url=base_url,
-                **context_kwargs,
-            )
+                **context_kwargs)
 
         self.created_at = time.time()
         self.last_activity_at = time.time()
@@ -143,8 +136,7 @@ class SessionManager:
 
             if response and response.status in self.AUTH_ERROR_CODES:
                 logger.warning(
-                    f"Session expired (HTTP {response.status}) for execution: {self.execution_id}",
-                )
+                    f"Session expired (HTTP {response.status}) for execution: {self.execution_id}")
                 return False
 
             logger.debug(f"Session valid for execution: {self.execution_id}")
@@ -154,8 +146,7 @@ class SessionManager:
         except Exception as e:
             logger.error(
                 f"Error checking session validity: {e}",
-                extra={"execution_id": self.execution_id},
-            )
+                extra={"execution_id": self.execution_id})
             return False
 
     def get_session_age_seconds(self) -> float:
@@ -180,8 +171,7 @@ class SessionManager:
         browser,
         base_url: str,
         credential_provider=None,
-        **context_kwargs,
-    ) -> tuple[bool, Optional[str]]:
+        **context_kwargs) -> tuple[bool, Optional[str]]:
         """Attempt session recovery after 401/403 error.
 
         Strategy depends on session age:
@@ -200,23 +190,20 @@ class SessionManager:
         session_age = self.get_session_age_seconds()
         logger.warning(
             f"Attempting session recovery for execution: {self.execution_id}",
-            extra={"session_age_seconds": session_age, "strategy": "keep_alive" if session_age < 300 else "replay"},
-        )
+            extra={"session_age_seconds": session_age, "strategy": "keep_alive" if session_age < 300 else "replay"})
 
         if session_age < 300:  # < 5 minutes
             # Strategy: Keep alive and wait for credential confirmation
             logger.info(
                 "Using keep-alive recovery strategy",
-                extra={"execution_id": self.execution_id},
-            )
+                extra={"execution_id": self.execution_id})
             return True, "keep_alive"
 
         else:  # >= 5 minutes
             # Strategy: Create new context and replay auth
             logger.info(
                 "Using replay recovery strategy",
-                extra={"execution_id": self.execution_id},
-            )
+                extra={"execution_id": self.execution_id})
 
             try:
                 # Close old context
@@ -227,16 +214,14 @@ class SessionManager:
                 self.browser_context = await self.initialize_context(
                     browser,
                     base_url,
-                    **context_kwargs,
-                )
+                    **context_kwargs)
 
                 return True, "replay"
 
             except Exception as e:
                 logger.error(
                     f"Session recovery failed: {e}",
-                    extra={"execution_id": self.execution_id},
-                )
+                    extra={"execution_id": self.execution_id})
                 return False, None
 
     async def close(self) -> None:
@@ -252,10 +237,9 @@ class SessionManager:
             except Exception as e:
                 logger.error(
                     f"Error closing session: {e}",
-                    extra={"execution_id": self.execution_id},
-                )
+                    extra={"execution_id": self.execution_id})
 
-    def _load_session(self) -> Optional[Dict[str, Any]]:
+    def _load_session(self) -> Optional[dict[str, Any]]:
         """Load session data from storage.
 
         Returns:
@@ -274,11 +258,10 @@ class SessionManager:
         except Exception as e:
             logger.error(
                 f"Failed to load session: {e}",
-                extra={"session_file": str(self.session_file)},
-            )
+                extra={"session_file": str(self.session_file)})
             return None
 
-    def _save_session_data(self, data: Dict[str, Any]) -> None:
+    def _save_session_data(self, data: dict[str, Any]) -> None:
         """Save session data to storage.
 
         Uses atomic write for crash safety.
@@ -301,15 +284,14 @@ class SessionManager:
         except Exception as e:
             logger.error(
                 f"Failed to save session: {e}",
-                extra={"session_file": str(self.session_file)},
-            )
+                extra={"session_file": str(self.session_file)})
             if temp_file.exists():
                 temp_file.unlink()
 
 
 class BrowserContextPool:
     """Manages a pool of isolated browser contexts for concurrent executions.
-    
+
     Allocates contexts to executions, tracks usage, and detects/cleans up leaks.
     """
 
@@ -319,7 +301,7 @@ class BrowserContextPool:
         Args:
             max_concurrent: Maximum concurrent contexts (default 5)
         """
-        
+
         self.max_concurrent = max_concurrent
         self._available_contexts: list[BrowserContext] = []
         self._context_to_execution: dict[int, str] = {}  # context id -> execution_id
@@ -329,8 +311,7 @@ class BrowserContextPool:
         self._browser = None
 
         logger.info(
-            f"BrowserContextPool initialized with max_concurrent={max_concurrent}",
-        )
+            f"BrowserContextPool initialized with max_concurrent={max_concurrent}")
 
     async def initialize(self, browser) -> None:
         """Initialize pool with browser instance.
@@ -346,8 +327,7 @@ class BrowserContextPool:
         self,
         execution_id: str,
         base_url: str = None,
-        **context_kwargs,
-    ) -> BrowserContext:
+        **context_kwargs) -> BrowserContext:
         """Acquire a context for an execution.
 
         Prioritizes reusing available contexts from pool. If none available,
@@ -364,7 +344,7 @@ class BrowserContextPool:
         Raises:
             RuntimeError: If execution already has assigned context or at max capacity
         """
-        
+
         async with self._pool_lock:
             if execution_id in self._execution_to_context:
                 raise RuntimeError(
@@ -383,8 +363,7 @@ class BrowserContextPool:
 
                 logger.debug(
                     f"Reused context for execution: {execution_id}",
-                    extra={"previous_execution": old_exec},
-                )
+                    extra={"previous_execution": old_exec})
 
                 return context
 
@@ -395,8 +374,7 @@ class BrowserContextPool:
 
                 context = await self._browser.new_context(
                     base_url=base_url,
-                    **context_kwargs,
-                )
+                    **context_kwargs)
 
                 context_id = id(context)
                 self._execution_to_context[execution_id] = context
@@ -405,8 +383,7 @@ class BrowserContextPool:
 
                 logger.info(
                     f"New context created for execution: {execution_id}",
-                    extra={"total_contexts": len(self._execution_to_context)},
-                )
+                    extra={"total_contexts": len(self._execution_to_context)})
 
                 return context
 
@@ -420,8 +397,7 @@ class BrowserContextPool:
         self,
         execution_id: str,
         save_session: bool = False,
-        session_manager: Optional["SessionManager"] = None,
-    ) -> None:
+        session_manager: Optional["SessionManager"] = None) -> None:
         """Release context back to pool or close it.
 
         Args:
@@ -437,7 +413,6 @@ class BrowserContextPool:
                 return
 
             context = self._execution_to_context[execution_id]
-            context_id = id(context)
 
             if save_session and session_manager:
                 try:
@@ -460,8 +435,7 @@ class BrowserContextPool:
                 extra={
                     "available_contexts": len(self._available_contexts),
                     "active_contexts": len(self._execution_to_context),
-                },
-            )
+                })
 
     def get_context_for_execution(self, execution_id: str) -> Optional[BrowserContext]:
         """Get current context for an execution (non-blocking lookup).
@@ -474,7 +448,7 @@ class BrowserContextPool:
         """
         return self._execution_to_context.get(execution_id)
 
-    async def get_pool_metrics(self) -> Dict[str, Any]:
+    async def get_pool_metrics(self) -> dict[str, Any]:
         """Get current pool state metrics.
 
         Returns:
@@ -494,8 +468,7 @@ class BrowserContextPool:
                 (exec_id, now - created_at)
                 for (ctx_id, exec_id), created_at in zip(
                     self._context_to_execution.items(),
-                    self._context_created_at.values(),
-                )
+                    self._context_created_at.values())
                 if now - created_at > 3600  # 1 hour
             ]
 
@@ -518,8 +491,7 @@ class BrowserContextPool:
                 extra={
                     "active_contexts": len(self._execution_to_context),
                     "available_contexts": len(self._available_contexts),
-                },
-            )
+                })
 
             # Close all contexts
             all_contexts = (

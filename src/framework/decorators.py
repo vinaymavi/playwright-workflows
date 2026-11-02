@@ -1,9 +1,8 @@
 """Decorators for workflow steps with retry, logging, and error handling."""
 
-import asyncio
 import functools
 import time
-from typing import Any, Callable, List, Optional, TypeVar, Union
+from typing import Any, Callable, Optional, TypeVar, 
 
 from .errors import PermanentError, TransientError, WorkflowError
 from .retry_handler import RetryPolicy, with_retry, with_retry_sync
@@ -18,10 +17,9 @@ def step(
     name: Optional[str] = None,
     max_retries: int = 3,
     backoff_strategy: str = "exponential",
-    retry_on_errors: Optional[List[str]] = None,
-    fail_on_errors: Optional[List[str]] = None,
-    timeout_ms: Optional[int] = None,
-) -> Callable[[F], F]:
+    retry_on_errors: Optional[list[str]] = None,
+    fail_on_errors: Optional[list[str]] = None,
+    timeout_ms: Optional[int] = None) -> Callable[[F], F]:
     """
     Decorator for workflow methods to enable retry, logging, and error classification.
 
@@ -68,8 +66,7 @@ def step(
             initial_backoff_seconds=1.0,
             max_backoff_seconds=60.0,
             backoff_multiplier=2.0,
-            jitter_enabled=True,
-        )
+            jitter_enabled=True)
 
         if is_async:
 
@@ -83,8 +80,7 @@ def step(
                 if workflow:
                     workflow.logger.info(
                         f"Step started: {step_name}",
-                        extra={"extra_fields": {"step_name": step_name}},
-                    )
+                        extra={"extra_fields": {"step_name": step_name}})
                     await workflow.on_step_start(step_name, 0)
 
                 try:
@@ -94,14 +90,12 @@ def step(
                         *args,
                         policy=retry_policy,
                         step_name=step_name,
-                        **kwargs,
-                    )
+                        **kwargs)
 
                     if workflow:
                         workflow.logger.info(
                             f"Step completed: {step_name}",
-                            extra={"extra_fields": {"step_name": step_name}},
-                        )
+                            extra={"extra_fields": {"step_name": step_name}})
                         await workflow.on_step_complete(step_name, result)
 
                     return result
@@ -110,8 +104,7 @@ def step(
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (permanent): {step_name}",
-                            extra={"extra_fields": {"step_name": step_name}},
-                        )
+                            extra={"extra_fields": {"step_name": step_name}})
                         await workflow.on_step_error(step_name, e)
                     raise
 
@@ -119,8 +112,7 @@ def step(
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (transient exhausted): {step_name}",
-                            extra={"extra_fields": {"step_name": step_name}},
-                        )
+                            extra={"extra_fields": {"step_name": step_name}})
                         await workflow.on_step_error(step_name, e)
                     raise
 
@@ -128,8 +120,7 @@ def step(
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (unexpected): {step_name}",
-                            extra={"extra_fields": {"step_name": step_name}},
-                        )
+                            extra={"extra_fields": {"step_name": step_name}})
                         await workflow.on_step_error(step_name, e)
                     raise WorkflowError(
                         f"Step {step_name} failed: {e}"
@@ -149,8 +140,7 @@ def step(
                 if workflow:
                     workflow.logger.info(
                         f"Step started: {step_name}",
-                        extra={"extra_fields": {"step_name": step_name}},
-                    )
+                        extra={"extra_fields": {"step_name": step_name}})
 
                 try:
                     # Execute with retry logic
@@ -159,14 +149,12 @@ def step(
                         *args,
                         policy=retry_policy,
                         step_name=step_name,
-                        **kwargs,
-                    )
+                        **kwargs)
 
                     if workflow:
                         workflow.logger.info(
                             f"Step completed: {step_name}",
-                            extra={"extra_fields": {"step_name": step_name}},
-                        )
+                            extra={"extra_fields": {"step_name": step_name}})
 
                     return result
 
@@ -174,24 +162,21 @@ def step(
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (permanent): {step_name}",
-                            extra={"extra_fields": {"step_name": step_name}},
-                        )
+                            extra={"extra_fields": {"step_name": step_name}})
                     raise
 
                 except TransientError as e:
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (transient exhausted): {step_name}",
-                            extra={"extra_fields": {"step_name": step_name}},
-                        )
+                            extra={"extra_fields": {"step_name": step_name}})
                     raise
 
                 except Exception as e:
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (unexpected): {step_name}",
-                            extra={"extra_fields": {"step_name": step_name}},
-                        )
+                            extra={"extra_fields": {"step_name": step_name}})
                     raise WorkflowError(
                         f"Step {step_name} failed: {e}"
                     ) from e
@@ -207,8 +192,7 @@ def retry(
     backoff_multiplier: float = 2.0,
     max_delay_seconds: float = 60.0,
     jitter_enabled: bool = True,
-    on_retry: Optional[Callable[[int, Exception], None]] = None,
-) -> Callable[[F], F]:
+    on_retry: Optional[Callable[[int, Exception], None]] = None) -> Callable[[F], F]:
     """
     Simple retry decorator for any async or sync function.
 
@@ -239,8 +223,7 @@ def retry(
             initial_backoff_seconds=delay_seconds,
             max_backoff_seconds=max_delay_seconds,
             backoff_multiplier=backoff_multiplier,
-            jitter_enabled=jitter_enabled,
-        )
+            jitter_enabled=jitter_enabled)
 
         if is_async:
 

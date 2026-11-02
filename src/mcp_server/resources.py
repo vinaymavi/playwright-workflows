@@ -10,21 +10,20 @@ Resources:
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional, Tuple
 
 
 # Registry of available workflows with metadata
-_workflow_metadata: Dict[str, Dict[str, Any]] = {}
+_workflow_metadata: dict[str, dict[str, Any]] = {}
 
 
 def register_workflow_metadata(
-    workflow_type: str, 
+    workflow_type: str,
     description: str,
-    input_schema: Dict[str, Any],
-    output_schema: Dict[str, Any],
-) -> None:
+    input_schema: dict[str, Any],
+    output_schema: dict[str, Any]) -> None:
     """Register workflow metadata.
-    
+
     Args:
         workflow_type: Workflow type/name
         description: Human-readable description
@@ -39,24 +38,24 @@ def register_workflow_metadata(
     }
 
 
-def get_workflow_resource(workflow_type: str) -> Optional[Dict[str, Any]]:
+def get_workflow_resource(workflow_type: str) -> Optional[dict[str, Any]]:
     """Get workflow metadata resource.
-    
+
     Args:
         workflow_type: Type of workflow
-    
+
     Returns:
         Workflow metadata or None if not found
     """
     return _workflow_metadata.get(workflow_type)
 
 
-def get_execution_resource(execution_id: str) -> Optional[Dict[str, Any]]:
+def get_execution_resource(execution_id: str) -> Optional[dict[str, Any]]:
     """Get execution state resource.
-    
+
     Args:
         execution_id: Execution ID
-    
+
     Returns:
         Complete execution state or None if not found
     """
@@ -70,18 +69,18 @@ def get_execution_resource(execution_id: str) -> Optional[Dict[str, Any]]:
         return json.load(f)
 
 
-def list_workflow_resources() -> list[Dict[str, Any]]:
+def list_workflow_resources() -> list[dict[str, Any]]:
     """List all available workflow resources.
-    
+
     Returns:
         List of workflow metadata resources
     """
     return list(_workflow_metadata.values())
 
 
-def list_execution_resources() -> list[Dict[str, str]]:
+def list_execution_resources() -> list[dict[str, str]]:
     """List all execution resources (execution IDs and summary).
-    
+
     Returns:
         List of execution summaries
     """
@@ -104,11 +103,11 @@ def list_execution_resources() -> list[Dict[str, str]]:
 
 def get_artifact_resource(execution_id: str, name: str) -> Optional[Tuple[bytes, str]]:
     """Get artifact resource (screenshot or PDF).
-    
+
     Args:
         execution_id: Execution ID
         name: Artifact name (e.g., 'screenshot_001.png' or 'export_2024.pdf')
-    
+
     Returns:
         Tuple of (file_content, content_type) or None if not found
     """
@@ -134,12 +133,12 @@ def get_artifact_resource(execution_id: str, name: str) -> Optional[Tuple[bytes,
     return content, content_type
 
 
-def list_artifact_resources(execution_id: str) -> list[Dict[str, Any]]:
+def list_artifact_resources(execution_id: str) -> list[dict[str, Any]]:
     """List all artifacts for an execution.
-    
+
     Args:
         execution_id: Execution ID
-    
+
     Returns:
         List of artifact metadata
     """
@@ -153,8 +152,8 @@ def list_artifact_resources(execution_id: str) -> list[Dict[str, Any]]:
             artifacts.append({
                 "name": artifact_path.name,
                 "size_bytes": file_size,
-                "type": "image/png" if artifact_path.suffix.lower() == ".png" else 
-                        "application/pdf" if artifact_path.suffix.lower() == ".pdf" else 
+                "type": "image/png" if artifact_path.suffix.lower() == ".png" else
+                        "application/pdf" if artifact_path.suffix.lower() == ".pdf" else
                         "application/octet-stream",
                 "url": f"/artifact/{execution_id}/{artifact_path.name}",
             })
@@ -162,12 +161,12 @@ def list_artifact_resources(execution_id: str) -> list[Dict[str, Any]]:
     return artifacts
 
 
-def get_execution_artifacts_from_state(execution_id: str) -> Optional[list[Dict[str, Any]]]:
+def get_execution_artifacts_from_state(execution_id: str) -> Optional[list[dict[str, Any]]]:
     """Get artifacts recorded in execution state.
-    
+
     Args:
         execution_id: Execution ID
-    
+
     Returns:
         List of Resource objects from execution state or None
     """

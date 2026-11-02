@@ -1,12 +1,10 @@
 """CLI entry point for executing workflows."""
 
 import argparse
-import asyncio
 import json
-import sys
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from dataclasses import asdict
 
 from playwright.async_api import async_playwright
@@ -35,7 +33,7 @@ class WorkflowRunner:
         """
         self.workflow_type = workflow_type
         self.output_format = output_format
-        self.workflow: Optional[Workflow] = None
+        self.workflow: Workflow | None = None
 
     def _get_workflow(self) -> Workflow:
         """Get workflow instance by type."""
@@ -45,7 +43,7 @@ class WorkflowRunner:
             raise ValueError(f"Unknown workflow type: {self.workflow_type}")
 
     async def run(
-        self, input_params: Dict[str, Any], log_dir: Optional[str] = None
+        self, input_params: dict[str, Any], log_dir: Optional[str] = None
     ) -> int:
         """
         Run the workflow.
@@ -60,8 +58,7 @@ class WorkflowRunner:
         # Setup logging
         if log_dir:
             setup_logger(
-                name=__name__,
-                log_file=Path(log_dir) / f"{self.workflow_type}.log"
+                name=__name__, log_file=Path(log_dir) / f"{self.workflow_type}.log"
             )
 
         # Get workflow instance
@@ -72,8 +69,7 @@ class WorkflowRunner:
             input_obj = LoginInput(
                 url=input_params.get("url", "http://localhost:8000"),
                 username=input_params.get("username", ""),
-                password=input_params.get("password", ""),
-            )
+                password=input_params.get("password", ""))
         else:
             raise ValueError(f"Unknown workflow type: {self.workflow_type}")
 
@@ -90,8 +86,7 @@ class WorkflowRunner:
                 # Create browser context (with session restoration if available)
                 context = await session_manager.initialize_context(
                     browser,
-                    self.workflow.base_url,
-                )
+                    self.workflow.base_url)
                 logger.info("Browser context created")
 
                 # Create page
@@ -106,8 +101,7 @@ class WorkflowRunner:
                 # Initialize execution tracker
                 execution = Execution(
                     execution_id=self.workflow.execution_id,
-                    base_url=self.workflow.base_url,
-                )
+                    base_url=self.workflow.base_url)
                 self.workflow.set_execution(execution)
 
                 # Run workflow
@@ -188,35 +182,30 @@ Examples:
   python -m src.cli.workflow_runner login \\
     --input '{"url":"http://localhost:8000","username":"test","password":"pass"}' \\
     --log-dir data/logs
-        """,
-    )
+        """)
 
     parser.add_argument(
         "workflow_type",
-        help="Type of workflow to run (e.g., 'login')",
-    )
+        help="Type of workflow to run (e.g., 'login')")
 
     parser.add_argument(
         "--input",
         "-i",
         required=True,
-        help="JSON input parameters for the workflow",
-    )
+        help="JSON input parameters for the workflow")
 
     parser.add_argument(
         "--output-format",
         "-f",
         choices=["json", "text"],
         default="json",
-        help="Output format (default: json)",
-    )
+        help="Output format (default: json)")
 
     parser.add_argument(
         "--log-dir",
         "-l",
         default="data/logs",
-        help="Directory to write logs to (default: data/logs)",
-    )
+        help="Directory to write logs to (default: data/logs)")
 
     args = parser.parse_args()
 

@@ -1,7 +1,6 @@
 """AES-256-GCM credential encryption and storage."""
 
 import base64
-import json
 from pathlib import Path
 from typing import Optional
 
@@ -51,8 +50,7 @@ class CredentialManager:
             algorithm=hashes.SHA256(),
             length=self.KEY_LENGTH,
             salt=salt,
-            iterations=self.ITERATIONS,
-        )
+            iterations=self.ITERATIONS)
         key = kdf.derive(self.master_password.encode())
         return key
 
@@ -66,7 +64,6 @@ class CredentialManager:
         Returns:
             Base64-encoded nonce + ciphertext + tag
         """
-        import os
 
         cipher = AESGCM(self._key)
         nonce = os.urandom(self.NONCE_LENGTH)
@@ -103,8 +100,7 @@ class CredentialManager:
         key: str,
         username: str,
         password: str,
-        metadata: Optional[dict] = None,
-    ) -> None:
+        metadata: Optional[dict] = None) -> None:
         """
         Store encrypted credential.
 
