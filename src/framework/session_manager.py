@@ -4,6 +4,7 @@ Handles browser context lifecycle, session persistence, and recovery
 for expired sessions (401/403 Unauthorized/Forbidden).
 """
 
+import asyncio
 import json
 import time
 from pathlib import Path
@@ -304,3 +305,238 @@ class SessionManager:
             )
             if temp_file.exists():
                 temp_file.unlink()
+
+
+class BrowserContextPool:
+    """Manages a pool of isolated browser contexts for concurrent executions.
+    
+    Allocates contexts to executions, tracks usage, and detects/cleans up leaks.
+    """
+
+    def __init__(self, max_concurrent: int = 5):
+        """Initialize context pool.
+
+        Args:
+            max_concurrent: Maximum concurrent contexts (default 5)
+        """
+        
+        self.max_concurrent = max_concurrent
+        self._available_contexts: list[BrowserContext] = []
+        self._context_to_execution: dict[int, str] = {}  # context id -> execution_id
+        self._execution_to_context: dict[str, BrowserContext] = {}  # execution_id -> context
+        self._context_created_at: dict[int, float] = {}  # context id -> creation time
+        self._pool_lock = asyncio.Lock()
+        self._browser = None
+
+        logger.info(
+            f"BrowserContextPool initialized with max_concurrent={max_concurrent}",
+        )
+
+    async def initialize(self, browser) -> None:
+        """Initialize pool with browser instance.
+
+        Args:
+            browser: Playwright browser instance
+        """
+        async with self._pool_lock:
+            self._browser = browser
+            logger.debug("BrowserContextPool initialized with browser instance")
+
+    async def acquire_context(
+        self,
+        execution_id: str,
+        base_url: str = None,
+        **context_kwargs,
+    ) -> BrowserContext:
+        """Acquire a context for an execution.
+
+        Prioritizes reusing available contexts from pool. If none available,
+        creates new context if under max_concurrent limit, else raises error.
+
+        Args:
+            execution_id: Unique execution ID
+            base_url: Base URL for context
+            **context_kwargs: Additional context creation arguments
+
+        Returns:
+            BrowserContext instance
+
+        Raises:
+            RuntimeError: If execution already has assigned context or at max capacity
+        """
+        
+        async with self._pool_lock:
+            if execution_id in self._execution_to_context:
+                raise RuntimeError(
+                    f"Execution {execution_id} already has assigned context"
+                )
+
+            # Prefer reusing available contexts first
+            if self._available_contexts:
+                context = self._available_contexts.pop()
+                context_id = id(context)
+
+                # Assign context to new execution
+                self._execution_to_context[execution_id] = context
+                old_exec = self._context_to_execution.get(context_id, "unknown")
+                self._context_to_execution[context_id] = execution_id
+
+                logger.debug(
+                    f"Reused context for execution: {execution_id}",
+                    extra={"previous_execution": old_exec},
+                )
+
+                return context
+
+            # Otherwise create new context if under max concurrent limit
+            if len(self._execution_to_context) < self.max_concurrent:
+                if not self._browser:
+                    raise RuntimeError("Pool not initialized with browser")
+
+                context = await self._browser.new_context(
+                    base_url=base_url,
+                    **context_kwargs,
+                )
+
+                context_id = id(context)
+                self._execution_to_context[execution_id] = context
+                self._context_to_execution[context_id] = execution_id
+                self._context_created_at[context_id] = time.time()
+
+                logger.info(
+                    f"New context created for execution: {execution_id}",
+                    extra={"total_contexts": len(self._execution_to_context)},
+                )
+
+                return context
+
+            # At capacity and no available contexts
+            raise RuntimeError(
+                f"Context pool at max capacity ({self.max_concurrent}), "
+                f"cannot acquire for {execution_id}"
+            )
+
+    async def release_context(
+        self,
+        execution_id: str,
+        save_session: bool = False,
+        session_manager: Optional["SessionManager"] = None,
+    ) -> None:
+        """Release context back to pool or close it.
+
+        Args:
+            execution_id: Execution ID holding the context
+            save_session: Whether to save session before release
+            session_manager: Optional session manager for saving state
+        """
+        async with self._pool_lock:
+            if execution_id not in self._execution_to_context:
+                logger.warning(
+                    f"Cannot release context for unknown execution: {execution_id}"
+                )
+                return
+
+            context = self._execution_to_context[execution_id]
+            context_id = id(context)
+
+            if save_session and session_manager:
+                try:
+                    # Temporarily set context for session save
+                    old_context = session_manager.browser_context
+                    session_manager.browser_context = context
+                    await session_manager.save_session()
+                    session_manager.browser_context = old_context
+                except Exception as e:
+                    logger.error(
+                        f"Failed to save session for execution {execution_id}: {e}"
+                    )
+
+            # Return to pool (don't close yet, reuse for next execution)
+            self._available_contexts.append(context)
+            del self._execution_to_context[execution_id]
+
+            logger.debug(
+                f"Context released for execution: {execution_id}",
+                extra={
+                    "available_contexts": len(self._available_contexts),
+                    "active_contexts": len(self._execution_to_context),
+                },
+            )
+
+    def get_context_for_execution(self, execution_id: str) -> Optional[BrowserContext]:
+        """Get current context for an execution (non-blocking lookup).
+
+        Args:
+            execution_id: Execution ID
+
+        Returns:
+            BrowserContext if execution has assigned context, None otherwise
+        """
+        return self._execution_to_context.get(execution_id)
+
+    async def get_pool_metrics(self) -> Dict[str, Any]:
+        """Get current pool state metrics.
+
+        Returns:
+            Dict with active_contexts, available_contexts, max_concurrent, leak_detected
+        """
+        async with self._pool_lock:
+            metrics = {
+                "active_contexts": len(self._execution_to_context),
+                "available_contexts": len(self._available_contexts),
+                "max_concurrent": self.max_concurrent,
+                "total_contexts": len(self._context_to_execution),
+            }
+
+            # Detect potential leaks (contexts held >1 hour)
+            now = time.time()
+            leaked = [
+                (exec_id, now - created_at)
+                for (ctx_id, exec_id), created_at in zip(
+                    self._context_to_execution.items(),
+                    self._context_created_at.values(),
+                )
+                if now - created_at > 3600  # 1 hour
+            ]
+
+            if leaked:
+                metrics["leaked_contexts"] = [
+                    {"execution_id": exec_id, "held_seconds": held_seconds}
+                    for exec_id, held_seconds in leaked
+                ]
+
+            return metrics
+
+    async def cleanup(self) -> None:
+        """Clean up pool, close all contexts.
+
+        Should be called on process exit to release browser resources.
+        """
+        async with self._pool_lock:
+            logger.info(
+                "Cleaning up BrowserContextPool",
+                extra={
+                    "active_contexts": len(self._execution_to_context),
+                    "available_contexts": len(self._available_contexts),
+                },
+            )
+
+            # Close all contexts
+            all_contexts = (
+                list(self._execution_to_context.values())
+                + self._available_contexts
+            )
+
+            for context in all_contexts:
+                try:
+                    await context.close()
+                except Exception as e:
+                    logger.error(f"Error closing context during cleanup: {e}")
+
+            # Clear all tracking
+            self._execution_to_context.clear()
+            self._available_contexts.clear()
+            self._context_to_execution.clear()
+            self._context_created_at.clear()
+
+            logger.info("BrowserContextPool cleanup complete")

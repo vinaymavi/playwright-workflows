@@ -202,12 +202,13 @@
 
 - [x] T047 [US3] [P] Create tests/framework/unit/test_concurrency_manager.py: Unit tests for semaphore, task group, quota enforcement (no browser)
 
-- [ ] T048 [US3] Enhance src/framework/session_manager.py for browser context pooling:
-  - [ ] Pool of isolated browser contexts (max N concurrent)
-  - [ ] Assign context to execution, release on completion
-  - [ ] Detect leaked contexts (cleanup on process exit)
+- [x] T048 [US3] Enhance src/framework/session_manager.py for browser context pooling:
+  - [x] Pool of isolated browser contexts (max N concurrent)
+  - [x] Assign context to execution, release on completion
+  - [x] Detect leaked contexts (cleanup on process exit)
+  - [x] Prefer reusing available contexts first (efficient pooling)
 
-- [ ] T049 [US3] [P] Create tests/framework/integration/test_browser_context_isolation.py: Test N concurrent workflows with isolated contexts (mock browser)
+- [x] T049 [US3] [P] Create tests/framework/integration/test_browser_context_isolation.py: Test N concurrent workflows with isolated contexts (mock browser)
 
 - [ ] T050 [US3] [P] Create tests/framework/integration/test_concurrent_state_isolation.py: Test N concurrent executions don't cross-contaminate state
   - [ ] Start 10 executions with different inputs
