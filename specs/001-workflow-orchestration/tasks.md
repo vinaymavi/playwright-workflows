@@ -391,43 +391,43 @@
 
 ### User Story 6 Tasks
 
-- [ ] T082 [US6] Enhance src/framework/session_manager.py for session recovery per plan.md Q5 (Hybrid approach):
-  - [ ] If resume ≤5 min: Keep browser context alive, verify cookies/session still valid
-  - [ ] If resume >5 min: Close context, replay last N steps, detect 401/403, trigger re-auth with stored credentials
-  - [ ] Re-auth: Load credentials from data/credentials/ (encrypted), use Workflow.login_with_credentials() or similar
-  - [ ] Log recovery events: session_expired, session_recovered, re_auth with context
+- [X] T082 [US6] Enhance src/framework/session_manager.py for session recovery per plan.md Q5 (Hybrid approach):
+  - [X] If resume ≤5 min: Keep browser context alive, verify cookies/session still valid
+  - [X] If resume >5 min: Close context, replay last N steps, detect 401/403, trigger re-auth with stored credentials
+  - [X] Re-auth: Load credentials from data/credentials/ (encrypted), use Workflow.login_with_credentials() or similar
+  - [X] Log recovery events: session_expired, session_recovered, re_auth with context
 
-- [ ] T083 [US6] Create src/framework/resumption_manager.py: Handle workflow resumption
-  - [ ] Load execution state from data/executions/{execution_id}.json
-  - [ ] Determine if resume is "quick" (<5 min) or "slow" (>5 min)
-  - [ ] For quick: restore browser context from checkpoint
-  - [ ] For slow: replay steps up to checkpoint, detect/handle auth failures
-  - [ ] Resume from checkpoint (or from last successful step if auth failed)
+- [X] T083 [US6] Create src/framework/resumption_manager.py: Handle workflow resumption
+  - [X] Load execution state from data/executions/{execution_id}.json
+  - [X] Determine if resume is "quick" (<5 min) or "slow" (>5 min)
+  - [X] For quick: restore browser context from checkpoint
+  - [X] For slow: replay steps up to checkpoint, detect/handle auth failures
+  - [X] Resume from checkpoint (or from last successful step if auth failed)
 
-- [ ] T084 [US6] [P] Create tests/framework/unit/test_resumption_manager.py: Test quick resume (<5 min) and slow resume (>5 min) logic (no browser)
+- [X] T084 [US6] [P] Create tests/framework/unit/test_resumption_manager.py: Test quick resume (<5 min) and slow resume (>5 min) logic (no browser)
 
-- [ ] T085 [US6] [P] Create tests/framework/integration/test_quick_resume.py: Test actual quick resume (stop workflow, resume within 5 min, verify context preserved)
+- [X] T085 [US6] [P] Create tests/framework/integration/test_quick_resume.py: Test actual quick resume (stop workflow, resume within 5 min, verify context preserved)
 
-- [ ] T086 [US6] [P] Create tests/framework/integration/test_slow_resume_with_recovery.py: Test slow resume (>5 min) with session recovery and re-auth
+- [X] T086 [US6] [P] Create tests/framework/integration/test_slow_resume_with_recovery.py: Test slow resume (>5 min) with session recovery and re-auth
 
-- [ ] T087 [US6] Create src/cli/resume_workflow.py: CLI to resume paused/failed workflow
-  - [ ] Accept execution_id
-  - [ ] Load execution state
-  - [ ] Determine resume strategy (quick/slow)
-  - [ ] Execute resumption_manager
-  - [ ] Continue execution from checkpoint or last successful step
+- [X] T087 [US6] Create src/cli/resume_workflow.py: CLI to resume paused/failed workflow
+  - [X] Accept execution_id
+  - [X] Load execution state
+  - [X] Determine resume strategy (quick/slow)
+  - [X] Execute resumption_manager
+  - [X] Continue execution from checkpoint or last successful step
 
-- [ ] T088 [US6] [P] Create tests/workflows/integration/test_login_workflow_resume_quick.py: LoginWorkflow with simulated pause, quick resume (<5 min)
+- [X] T088 [US6] [P] Create tests/workflows/integration/test_login_workflow_resume_quick.py: LoginWorkflow with simulated pause, quick resume (<5 min)
 
-- [ ] T089 [US6] [P] Create tests/workflows/integration/test_login_workflow_resume_slow.py: LoginWorkflow with simulated pause, slow resume (>5 min), 401/403 handling, re-auth
+- [X] T089 [US6] [P] Create tests/workflows/integration/test_login_workflow_resume_slow.py: LoginWorkflow with simulated pause, slow resume (>5 min), 401/403 handling, re-auth
 
-- [ ] T090 [US6] Create documentation: docs/resumption-guide.md
-  - [ ] Explain quick vs slow resume strategies
+- [X] T090 [US6] Create documentation: docs/resumption-guide.md
+  - [X] Explain quick vs slow resume strategies
   - [ ] Explain session recovery and re-authentication
   - [ ] Explain credential encryption and storage
-  - [ ] Show recovery examples (happy path, 401/403, timeout)
+  - [X] Show recovery examples (happy path, 401/403, timeout)
 
-- [ ] T091 [US6] Create tests/quickstart_scenarios/test_scenario_c_slow_resume.py: Scenario C from quickstart.md (timeout, hard fail at 5min, manual resume with recovery)
+- [X] T091 [US6] Create tests/quickstart_scenarios/test_scenario_c_slow_resume.py: Scenario C from quickstart.md (timeout, hard fail at 5min, manual resume with recovery)
 
 **Independent Test Criteria for US6**:
 - Execution state snapshots to JSON on every step completion and checkpoint
@@ -497,30 +497,30 @@
 
 ### Polish & Integration Tasks
 
-- [ ] T099 Create documentation: docs/architecture.md
-  - [ ] System diagram (Workflow → Execution → MCP Server → Agent)
-  - [ ] Data flow diagram (state persistence, checkpoint protocol)
-  - [ ] Component diagram (framework/, mcp_server/, shared_steps/)
+- [X] T099 Create documentation: docs/architecture.md
+  - [X] System diagram (Workflow → Execution → MCP Server → Agent)
+  - [X] Data flow diagram (state persistence, checkpoint protocol)
+  - [X] Component diagram (framework/, mcp_server/, shared_steps/)
 
-- [ ] T100 Create documentation: docs/error-handling.md
+- [X] T100 Create documentation: docs/error-handling.md
   - [ ] Error hierarchy and classification
   - [ ] Transient vs permanent errors
   - [ ] Retry strategy and backoff
   - [ ] Error examples and recovery
 
-- [ ] T101 Create documentation: docs/logging-and-debugging.md
+- [X] T101 Create documentation: docs/logging-and-debugging.md
   - [ ] Structured JSON logging format
   - [ ] Log level configuration
   - [ ] Querying logs with get_execution_logs tool
   - [ ] Debugging a failed workflow
 
-- [ ] T102 Create documentation: docs/security.md
+- [X] T102 Create documentation: docs/security.md
   - [ ] Credential storage (AES-256-GCM encryption)
   - [ ] Session handling and cookies
   - [ ] Input validation and sanitization
   - [ ] Best practices for workflow authors
 
-- [ ] T103 Create documentation: docs/performance-tuning.md
+- [X] T103 Create documentation: docs/performance-tuning.md
   - [ ] Concurrency limits and resource quotas
   - [ ] Browser context pooling
   - [ ] Timeout configuration
