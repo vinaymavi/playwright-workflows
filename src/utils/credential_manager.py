@@ -1,6 +1,7 @@
 """AES-256-GCM credential encryption and storage."""
 
 import base64
+import os
 from pathlib import Path
 from typing import Optional
 

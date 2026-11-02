@@ -22,6 +22,7 @@ Example:
             break
 """
 
+import asyncio
 from typing import Any, Optional
 
 from src.mcp_server.tools import (

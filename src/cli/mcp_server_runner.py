@@ -13,6 +13,7 @@ The server will:
 4. Send responses and notifications back to client
 """
 
+import asyncio
 
 from src.mcp_server.server import create_server
 

@@ -1,7 +1,9 @@
 """Manage execution artifacts (screenshots, PDFs, etc.)."""
 
+import uuid
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, Optional
 
 from pydantic import BaseModel, Field
 

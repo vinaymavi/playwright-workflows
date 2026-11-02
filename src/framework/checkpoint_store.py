@@ -7,6 +7,7 @@ This module provides JSON-based persistence for checkpoints, enabling:
 """
 
 import json
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional

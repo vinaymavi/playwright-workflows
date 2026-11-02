@@ -4,6 +4,7 @@ Handles browser context lifecycle, session persistence, and recovery
 for expired sessions (401/403 Unauthorized/Forbidden).
 """
 
+import asyncio
 import json
 import time
 from pathlib import Path

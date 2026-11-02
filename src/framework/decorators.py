@@ -1,8 +1,9 @@
 """Decorators for workflow steps with retry, logging, and error handling."""
 
+import asyncio
 import functools
 import time
-from typing import Any, Callable, Optional, TypeVar, 
+from typing import Any, Callable, Optional, TypeVar
 
 from .errors import PermanentError, TransientError, WorkflowError
 from .retry_handler import RetryPolicy, with_retry, with_retry_sync
@@ -158,14 +159,14 @@ def step(
 
                     return result
 
-                except PermanentError as e:
+                except PermanentError:
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (permanent): {step_name}",
                             extra={"extra_fields": {"step_name": step_name}})
                     raise
 
-                except TransientError as e:
+                except TransientError:
                     if workflow:
                         workflow.logger.error(
                             f"Step failed (transient exhausted): {step_name}",

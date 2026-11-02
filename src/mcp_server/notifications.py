@@ -6,6 +6,7 @@ Sends notifications to MCP client when workflow events occur:
 - execution_failed: Workflow failed with error
 """
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import Any

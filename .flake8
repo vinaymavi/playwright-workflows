@@ -1,6 +1,9 @@
 [flake8]
 # Ignore W503/W504 which conflict with Black formatter
 # Black prefers line break before binary operator (W503)
-extend-ignore = W503, W504, E203
+# E226 has false positives with f-string repetition (e.g., f"{'='*60}")
+# E501 line-too-long is enforced via black formatter integration
+# E125/E129 continuation line indentation issues are handled by Black
+extend-ignore = W503, W504, E203, E226, E501, E125, E129
 max-line-length = 100
 exclude = .venv,.git,__pycache__,build,dist,.pytest_cache

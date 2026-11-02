@@ -1,10 +1,12 @@
 """Example LoginWorkflow demonstrating web automation with the framework."""
 
-from typing import Optional, Any
+import uuid
+from typing import Any, Optional
+from dataclasses import dataclass
+
 from src.framework import Workflow, step
 from src.framework.errors import WorkflowError, WorkflowCheckpointTimeout
 from src.framework.checkpoint import CheckpointQuestion, CheckpointDecision
-from dataclasses import dataclass
 
 
 @dataclass

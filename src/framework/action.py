@@ -10,6 +10,7 @@ from typing import Any, Optional
 
 from ..utils.logging import setup_logger
 from .errors import PermanentError, TransientError
+from .execution import StepResult
 from .retry_handler import ErrorClassifier, RetryPolicy, with_retry, with_retry_sync
 
 logger = setup_logger(__name__)

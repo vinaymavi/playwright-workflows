@@ -1,5 +1,7 @@
 """Base Workflow class for Playwright-based automation workflows."""
 
+import asyncio
+import uuid
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
@@ -9,6 +11,7 @@ from playwright.async_api import Page, Browser, BrowserContext
 
 from .checkpoint import CheckpointQuestion, CheckpointRequest, CheckpointResponse, CheckpointDecision
 from .errors import WorkflowError, WorkflowCheckpointTimeout
+from .execution import Execution
 from .resource_manager import ResourceManager
 from .state_manager import StateManager
 from ..utils.logging import setup_logger

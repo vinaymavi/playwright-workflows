@@ -6,6 +6,7 @@ and JSON-based state storage with file locking for concurrent safety.
 """
 
 import json
+import uuid
 from datetime import datetime
 from enum import Enum
 from pathlib import Path

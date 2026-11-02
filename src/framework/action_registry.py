@@ -153,8 +153,9 @@ class ActionRegistry:
             entry_point_group: Name of the entry point group to scan
         """
         try:
+            from importlib import metadata
         except ImportError:
-            # Python < 3.8
+            # Python < 3.10
             import importlib_metadata as metadata
 
         logger.debug(f"Discovering entry points for group: {entry_point_group}")

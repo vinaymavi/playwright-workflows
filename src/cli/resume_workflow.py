@@ -3,6 +3,8 @@
 Supports both quick (<5 min) and slow (>5 min) resumption strategies.
 """
 
+import asyncio
+import sys
 from pathlib import Path
 from typing import Optional
 
