@@ -19,8 +19,8 @@ def mock_page():
     """Create a mock page for testing."""
     page = MockPage()
     page.set_element_visible("#login-form")
-    page.set_element_visible("#username")
-    page.set_element_visible("#password")
+    page.set_element_visible("#txtLogin")
+    page.set_element_visible("#txtPwd")
     page.set_element_visible("#submit-btn")
     page.set_element_visible("#user-info")
     return page
@@ -67,10 +67,10 @@ class TestLoginWorkflowSequence:
         assert mock_page.url == valid_login_input.url
 
         await login_workflow.fill_username()
-        assert mock_page.get_form_data()["#username"] == valid_login_input.username
+        assert mock_page.get_form_data()["#txtLogin"] == valid_login_input.username
 
         await login_workflow.fill_password()
-        assert mock_page.get_form_data()["#password"] == valid_login_input.password
+        assert mock_page.get_form_data()["#txtPwd"] == valid_login_input.password
 
         await login_workflow.click_submit()
         # Check that click was recorded
@@ -218,8 +218,8 @@ class TestLoginWorkflowIntegration:
         await login_workflow.fill_password()
 
         form_data = mock_page.get_form_data()
-        assert form_data["#username"] == valid_login_input.username
-        assert form_data["#password"] == valid_login_input.password
+        assert form_data["#txtLogin"] == valid_login_input.username
+        assert form_data["#txtPwd"] == valid_login_input.password
 
     @pytest.mark.asyncio
     async def test_navigation_recorded(self, login_workflow, mock_page, valid_login_input):

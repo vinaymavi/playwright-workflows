@@ -11,6 +11,8 @@ import asyncio
 from src.workflows.login_workflow import LoginWorkflow, LoginInput
 from src.framework.errors import WorkflowError
 from tests.fixtures import MockPage
+from src.framework.execution import Execution
+from src.framework.checkpoint import CheckpointDecision
 
 
 @pytest.fixture
@@ -50,6 +52,19 @@ class TestLoginWorkflowIntegration:
         base_url = "http://localhost:8003"
         workflow = LoginWorkflow(base_url=base_url)
         workflow._page = mock_page
+        
+        # Create and set execution
+        execution = Execution(
+            execution_id=workflow.execution_id,
+            base_url=workflow.base_url,
+        )
+        workflow.set_execution(execution)
+        
+        # Mock the request_approval to auto-approve for happy path
+        async def mock_approval():
+            return CheckpointDecision(choice="proceed")
+        
+        workflow.request_approval = mock_approval
 
         input_data = LoginInput(
             url=base_url,
@@ -76,6 +91,19 @@ class TestLoginWorkflowIntegration:
         workflow = LoginWorkflow(base_url=base_url)
         workflow._page = mock_page
         
+        # Create and set execution
+        execution = Execution(
+            execution_id=workflow.execution_id,
+            base_url=workflow.base_url,
+        )
+        workflow.set_execution(execution)
+        
+        # Mock the request_approval to auto-approve for happy path
+        async def mock_approval():
+            return CheckpointDecision(choice="proceed")
+        
+        workflow.request_approval = mock_approval
+        
         assert workflow.base_url == base_url
         
         input_data = LoginInput(
@@ -99,10 +127,8 @@ class TestLoginWorkflowIntegration:
         - No interference between workflows
         """
         base_url = "http://localhost:8003"
-        workflows = []
-        inputs = []
         
-        for i in range(3):
+        async def run_workflow(i):
             mock_page = MockPage()
             mock_page.set_element_visible("#login-form")
             mock_page.set_element_visible("#username")
@@ -113,17 +139,30 @@ class TestLoginWorkflowIntegration:
             wf = LoginWorkflow(base_url=base_url)
             wf._page = mock_page
             
+            # Create and set execution
+            execution = Execution(
+                execution_id=wf.execution_id,
+                base_url=wf.base_url,
+            )
+            wf.set_execution(execution)
+            
+            # Mock the request_approval to auto-approve for happy path
+            async def mock_approval():
+                return CheckpointDecision(choice="proceed")
+            
+            wf.request_approval = mock_approval
+            
             user_input = LoginInput(
                 url=base_url,
                 username=f"user{i}",
                 password=f"pass{i}"
             )
-            workflows.append(wf)
-            inputs.append(user_input)
+            
+            return await wf.run(user_input)
         
         # Run all workflows concurrently
         results = await asyncio.gather(
-            *[wf.run(inp) for wf, inp in zip(workflows, inputs)],
+            *[run_workflow(i) for i in range(3)],
             return_exceptions=False
         )
         
@@ -144,6 +183,19 @@ class TestLoginWorkflowIntegration:
         base_url = "http://localhost:8003"
         workflow = LoginWorkflow(base_url=base_url)
         workflow._page = mock_page
+        
+        # Create and set execution
+        execution = Execution(
+            execution_id=workflow.execution_id,
+            base_url=workflow.base_url,
+        )
+        workflow.set_execution(execution)
+        
+        # Mock the request_approval to auto-approve for happy path
+        async def mock_approval():
+            return CheckpointDecision(choice="proceed")
+        
+        workflow.request_approval = mock_approval
         
         input_data = LoginInput(
             url=base_url,
@@ -171,6 +223,19 @@ class TestLoginWorkflowIntegration:
         base_url = "http://localhost:8003"
         workflow = LoginWorkflow(base_url=base_url)
         workflow._page = mock_page
+        
+        # Create and set execution
+        execution = Execution(
+            execution_id=workflow.execution_id,
+            base_url=workflow.base_url,
+        )
+        workflow.set_execution(execution)
+        
+        # Mock the request_approval to auto-approve for happy path
+        async def mock_approval():
+            return CheckpointDecision(choice="proceed")
+        
+        workflow.request_approval = mock_approval
         
         input_data = LoginInput(
             url=base_url,
@@ -224,6 +289,19 @@ class TestLoginWorkflowIntegration:
         workflow = LoginWorkflow(base_url=base_url)
         workflow._page = mock_page
         
+        # Create and set execution
+        execution = Execution(
+            execution_id=workflow.execution_id,
+            base_url=workflow.base_url,
+        )
+        workflow.set_execution(execution)
+        
+        # Mock the request_approval to auto-approve for happy path
+        async def mock_approval():
+            return CheckpointDecision(choice="proceed")
+        
+        workflow.request_approval = mock_approval
+        
         input_data = LoginInput(
             url=base_url,
             username="testuser",
@@ -254,6 +332,19 @@ class TestLoginWorkflowIntegration:
         base_url = "http://localhost:8003"
         workflow = LoginWorkflow(base_url=base_url)
         workflow._page = mock_page
+        
+        # Create and set execution
+        execution = Execution(
+            execution_id=workflow.execution_id,
+            base_url=workflow.base_url,
+        )
+        workflow.set_execution(execution)
+        
+        # Mock the request_approval to auto-approve for happy path
+        async def mock_approval():
+            return CheckpointDecision(choice="proceed")
+        
+        workflow.request_approval = mock_approval
         
         input_data = LoginInput(
             url=base_url,
