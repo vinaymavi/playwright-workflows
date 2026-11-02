@@ -5,11 +5,11 @@ Provides tools for starting workflows, resolving checkpoints, and monitoring exe
 """
 
 from .notifications import NotificationService
-from .server import WorkflowMCPServer, create_server
+from .server import mcp, create_server
 from .tools import register_workflow
 
 __all__ = [
-    "WorkflowMCPServer",
+    "mcp",
     "create_server",
     "NotificationService",
     "register_workflow",
