@@ -3,7 +3,8 @@
 import uuid
 from typing import Optional, Dict, Any
 from src.framework import Workflow, step
-from src.framework.errors import WorkflowError
+from src.framework.errors import WorkflowError, WorkflowCheckpointTimeout
+from src.framework.checkpoint import CheckpointQuestion, CheckpointDecision
 from dataclasses import dataclass
 
 
@@ -80,6 +81,51 @@ class LoginWorkflow(Workflow):
 
         await self.fill("#password", self.input.password)
 
+    @step(name="Request Submission Approval", max_retries=0)
+    async def request_approval(self) -> CheckpointDecision:
+        """Request agent/human approval before submitting the login form.
+        
+        This checkpoint allows an agent to review the form before submission.
+        Note: In testing without execution context, this step is skipped.
+        """
+        if not self.input:
+            raise WorkflowError("Input not provided")
+
+        # Skip checkpoint if execution not initialized (e.g., in unit tests)
+        if not self._execution:
+            self.logger.info("Execution not initialized - skipping checkpoint")
+            # Return a default "proceed" decision for testing
+            return CheckpointDecision(choice="proceed")
+
+        # Create checkpoint question
+        question = CheckpointQuestion(
+            question_text="Ready to submit the login form?",
+            question_type="single_choice",
+            options=["proceed", "cancel"],
+            metadata={
+                "current_page": self._page.url if self._page else None,
+                "form_data": {
+                    "username": self.input.username,
+                    "password": "***"  # Masked for security
+                },
+            }
+        )
+
+        try:
+            # Request decision from agent (waits here until response received)
+            response = await self.checkpoint(
+                question=question,
+                timeout_seconds=300,  # 5 minutes default timeout
+                allow_skip=False
+            )
+            
+            # Return the decision
+            return response.decision
+            
+        except WorkflowCheckpointTimeout:
+            # If checkpoint times out without allow_skip, re-raise
+            raise WorkflowError("Checkpoint timeout: Agent did not respond within 5 minutes")
+
     @step(name="Click Submit", max_retries=2)
     async def click_submit(self) -> None:
         """Click the login submit button."""
@@ -107,6 +153,25 @@ class LoginWorkflow(Workflow):
             await self.navigate_to_login()
             await self.fill_username()
             await self.fill_password()
+            
+            # Request approval before submitting
+            decision = await self.request_approval()
+            
+            # Check agent's decision
+            if decision.choice == "cancel":
+                self.output = LoginOutput(
+                    success=False,
+                    message="Login cancelled by agent",
+                )
+                raise WorkflowError("Login cancelled by agent")
+            elif decision.choice != "proceed":
+                self.output = LoginOutput(
+                    success=False,
+                    message=f"Invalid decision: {decision.choice}",
+                )
+                raise WorkflowError(f"Invalid checkpoint decision: {decision.choice}")
+            
+            # Agent approved, proceed with submission
             await self.click_submit()
             await self.wait_for_dashboard()
 
@@ -136,6 +201,9 @@ class LoginWorkflow(Workflow):
                     success=False,
                     message="Access forbidden (403)",
                 )
+            elif "cancelled by agent" in error_message.lower():
+                # Don't re-wrap cancellation messages
+                raise
             else:
                 self.output = LoginOutput(
                     success=False,

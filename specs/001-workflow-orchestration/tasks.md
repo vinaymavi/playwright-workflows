@@ -173,7 +173,7 @@
   - [ ] Show timeout behavior (soft + hard)
   - [ ] Show resumption strategy
 
-- [ ] T045 [US2] Create tests/quickstart_scenarios/test_scenario_b_quick_resume.py: Scenario B from quickstart.md (checkpoint pause/resume ≤5min, session preserved)
+- [x] T045 [US2] Create tests/quickstart_scenarios/test_scenario_b_quick_resume.py: Scenario B from quickstart.md (checkpoint pause/resume ≤5min, session preserved)
 
 **Independent Test Criteria for US2**:
 - Workflow pauses at checkpoint, sends structured question JSON
