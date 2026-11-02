@@ -60,7 +60,9 @@ class Workflow(ABC):
         max_retries: int = 3,
         timeout_seconds: int = 3600,
         logger=None,
-        state_file: Optional[Path] = None):
+        state_file: Optional[Path] = None,
+        debug: bool = False,
+        save_screenshots: bool = False):
         """
         Initialize workflow execution context.
 
@@ -71,12 +73,16 @@ class Workflow(ABC):
             timeout_seconds: Hard timeout for entire workflow
             logger: Structured logger instance (auto-created if None)
             state_file: Path to execution state file (auto-created if None)
+            debug: Enable debug mode with verbose logging
+            save_screenshots: Save screenshots on errors
         """
         self.execution_id = execution_id
         self.base_url = base_url
         self.max_retries = max_retries
         self.timeout_seconds = timeout_seconds
         self.logger = logger or setup_logger(__name__, execution_id)
+        self.debug = debug
+        self.save_screenshots = save_screenshots
 
         # State management
         if state_file is None:
@@ -94,6 +100,19 @@ class Workflow(ABC):
 
         # Execution tracking
         self._execution: Optional[Execution] = None
+        
+        # Debug directory
+        self.debug_dir: Optional[Path] = None
+        if self.debug or self.save_screenshots:
+            try:
+                self.debug_dir = Path(f"data/debug/{execution_id}")
+                self.debug_dir.mkdir(parents=True, exist_ok=True)
+                (self.debug_dir / "screenshots").mkdir(exist_ok=True)
+                (self.debug_dir / "html").mkdir(exist_ok=True)
+                self.logger.debug(f"Debug directory created: {self.debug_dir}")
+            except Exception as e:
+                self.logger.warning(f"Failed to create debug directory: {e}")
+                self.debug_dir = None
 
     @abstractmethod
     async def run(self, **input_params) -> dict[str, Any]:
@@ -151,11 +170,37 @@ class Workflow(ABC):
             raise WorkflowError("Page not initialized")
 
         self.logger.info(f"Filling element: {selector}")
+
+        # Debug: Log available input fields
+        if self.debug:
+            try:
+                element = await self._page.query_selector(selector)
+                if not element:
+                    # Element not found - help with debugging
+                    inputs = await self._page.query_selector_all("input")
+                    self.logger.warning(
+                        f"Element '{selector}' not found. "
+                        f"Found {len(inputs)} input elements on page."
+                    )
+                    for idx, inp in enumerate(inputs):
+                        inp_id = await inp.get_attribute("id")
+                        inp_name = await inp.get_attribute("name")
+                        inp_type = await inp.get_attribute("type")
+                        self.logger.warning(
+                            f"  Input {idx}: id='{inp_id}', name='{inp_name}', type='{inp_type}'"
+                        )
+                    # Capture page state before error
+                    await self.debug_capture_page_state(f"fill_{selector}", "error")
+            except Exception as debug_e:
+                self.logger.debug(f"Debug logging error: {debug_e}")
+
         try:
             await self._page.fill(selector, text, timeout=timeout_ms)
             self.logger.info(f"Successfully filled: {selector}")
         except Exception as e:
             self.logger.error(f"Fill failed: {e}")
+            if self.debug or self.save_screenshots:
+                await self.debug_capture_page_state(f"fill_{selector}", "error")
             raise WorkflowError(f"Failed to fill {selector}: {e}") from e
 
     async def select(self, selector: str, value: str, timeout_ms: int = 10000) -> None:
@@ -303,6 +348,70 @@ class Workflow(ABC):
         except Exception as e:
             self.logger.error(f"PDF export failed: {e}")
             raise WorkflowError(f"Failed to export PDF: {e}") from e
+
+    async def debug_capture_page_state(self, step_name: str = "debug", context: str = "before") -> None:
+        """
+        Capture page state for debugging (screenshots, HTML, console messages).
+
+        Args:
+            step_name: Name of the step for file naming
+            context: Context like "before", "after", "error"
+        """
+        if not self.debug and not self.save_screenshots:
+            return
+
+        if not self._page:
+            self.logger.warning("Cannot capture page state: page not initialized")
+            return
+
+        try:
+            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+            safe_step_name = step_name.lower().replace(" ", "_")
+
+            # Take screenshot
+            screenshot_path = (
+                self.debug_dir / "screenshots" / f"{safe_step_name}_{context}_{timestamp}.png"
+            )
+            await self._page.screenshot(path=str(screenshot_path))
+            self.logger.debug(f"Debug screenshot saved: {screenshot_path}")
+
+            # Save HTML content
+            html_path = (
+                self.debug_dir / "html" / f"{safe_step_name}_{context}_{timestamp}.html"
+            )
+            html_content = await self._page.content()
+            html_path.write_text(html_content)
+            self.logger.debug(f"Debug HTML saved: {html_path}")
+
+            # Log page metadata
+            current_url = self._page.url
+            page_title = await self._page.title()
+            self.logger.info(
+                f"Debug Capture: {step_name} ({context}) - URL: {current_url}, Title: {page_title}"
+            )
+
+            # Log available input fields for debugging
+            if self.debug:
+                try:
+                    inputs = await self._page.query_selector_all("input")
+                    self.logger.debug(f"Found {len(inputs)} input elements on page")
+
+                    for idx, inp in enumerate(inputs):
+                        input_id = await inp.get_attribute("id")
+                        input_name = await inp.get_attribute("name")
+                        input_type = await inp.get_attribute("type")
+                        placeholder = await inp.get_attribute("placeholder")
+                        visible = await inp.is_visible()
+
+                        self.logger.debug(
+                            f"  Input {idx}: id={input_id}, name={input_name}, "
+                            f"type={input_type}, placeholder={placeholder}, visible={visible}"
+                        )
+                except Exception as e:
+                    self.logger.debug(f"Could not log input fields: {e}")
+
+        except Exception as e:
+            self.logger.error(f"Debug capture failed: {e}")
 
     # ==================== State Management ====================
 

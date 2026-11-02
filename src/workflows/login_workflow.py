@@ -1,12 +1,12 @@
 """Example LoginWorkflow demonstrating web automation with the framework."""
 
 import uuid
-from typing import Any, Optional
 from dataclasses import dataclass
+from typing import Any, Optional
 
 from src.framework import Workflow, step
-from src.framework.errors import WorkflowError, WorkflowCheckpointTimeout
-from src.framework.checkpoint import CheckpointQuestion, CheckpointDecision
+from src.framework.checkpoint import CheckpointDecision, CheckpointQuestion
+from src.framework.errors import WorkflowCheckpointTimeout, WorkflowError
 
 
 @dataclass
@@ -47,7 +47,10 @@ class LoginWorkflow(Workflow):
     def __init__(
         self,
         execution_id: str | None = None,
-        base_url: str = "http://localhost:8000"):
+        base_url: str = "http://localhost:8000",
+        debug: bool = False,
+        save_screenshots: bool = False,
+    ):
         """Initialize LoginWorkflow."""
         # Generate execution_id if not provided (for testing)
         if execution_id is None:
@@ -55,7 +58,10 @@ class LoginWorkflow(Workflow):
 
         super().__init__(
             execution_id=execution_id,
-            base_url=base_url)
+            base_url=base_url,
+            debug=debug,
+            save_screenshots=save_screenshots,
+        )
         self.input: LoginInput | None = None
         self.output: LoginOutput | None = None
 
@@ -66,7 +72,7 @@ class LoginWorkflow(Workflow):
             raise WorkflowError("Input not provided")
 
         await self.navigate(self.input.url)
-        await self.wait_for_selector("#login-form", timeout_ms=10000)
+        await self.wait_for_selector("form", timeout_ms=10000)
 
     @step(name="Fill Username", max_retries=1)
     async def fill_username(self) -> None:
@@ -74,7 +80,7 @@ class LoginWorkflow(Workflow):
         if not self.input:
             raise WorkflowError("Input not provided")
 
-        await self.fill("#username", self.input.username)
+        await self.fill("#txtLogin", self.input.username)
 
     @step(name="Fill Password", max_retries=1)
     async def fill_password(self) -> None:
@@ -82,7 +88,7 @@ class LoginWorkflow(Workflow):
         if not self.input:
             raise WorkflowError("Input not provided")
 
-        await self.fill("#password", self.input.password)
+        await self.fill("#txtPwd", self.input.password)
 
     @step(name="Request Submission Approval", max_retries=0)
     async def request_approval(self) -> CheckpointDecision:
@@ -111,14 +117,16 @@ class LoginWorkflow(Workflow):
                     "username": self.input.username,
                     "password": "***",  # Masked for security
                 },
-            })
+            },
+        )
 
         try:
             # Request decision from agent (waits here until response received)
             response = await self.checkpoint(
                 question=question,
                 timeout_seconds=300,  # 5 minutes default timeout
-                allow_skip=False)
+                allow_skip=False,
+            )
 
             # Return the decision
             return response.decision
@@ -163,13 +171,13 @@ class LoginWorkflow(Workflow):
             # Check agent's decision
             if decision.choice == "cancel":
                 self.output = LoginOutput(
-                    success=False,
-                    message="Login cancelled by agent")
+                    success=False, message="Login cancelled by agent"
+                )
                 raise WorkflowError("Login cancelled by agent")
             elif decision.choice != "proceed":
                 self.output = LoginOutput(
-                    success=False,
-                    message=f"Invalid decision: {decision.choice}")
+                    success=False, message=f"Invalid decision: {decision.choice}"
+                )
                 raise WorkflowError(f"Invalid checkpoint decision: {decision.choice}")
 
             # Agent approved, proceed with submission
@@ -182,7 +190,8 @@ class LoginWorkflow(Workflow):
                 success=True,
                 message="Login successful",
                 dashboard_url=dashboard_url,
-                session_id="session_123")
+                session_id="session_123",
+            )
 
             return self.output
 
@@ -193,19 +202,19 @@ class LoginWorkflow(Workflow):
             # Check for authentication errors
             if "401" in error_message or "Unauthorized" in error_message:
                 self.output = LoginOutput(
-                    success=False,
-                    message="Invalid credentials (401 Unauthorized)")
+                    success=False, message="Invalid credentials (401 Unauthorized)"
+                )
             elif "403" in error_message or "Forbidden" in error_message:
                 self.output = LoginOutput(
-                    success=False,
-                    message="Access forbidden (403)")
+                    success=False, message="Access forbidden (403)"
+                )
             elif "cancelled by agent" in error_message.lower():
                 # Don't re-wrap cancellation messages
                 raise
             else:
                 self.output = LoginOutput(
-                    success=False,
-                    message=f"Login failed: {error_message}")
+                    success=False, message=f"Login failed: {error_message}"
+                )
 
             # Re-raise for framework to handle
             raise WorkflowError(f"Login workflow failed: {error_message}") from e

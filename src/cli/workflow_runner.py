@@ -25,22 +25,43 @@ logger = logging.getLogger(__name__)
 class WorkflowRunner:
     """Runner for executing workflows via CLI."""
 
-    def __init__(self, workflow_type: str, output_format: str = "json"):
+    def __init__(
+        self,
+        workflow_type: str,
+        output_format: str = "json",
+        log_format: str = "json",
+        debug: bool = False,
+        save_screenshots: bool = False,
+        headless: bool = True,
+    ):
         """
         Initialize workflow runner.
 
         Args:
             workflow_type: Type of workflow to run (e.g., "login")
             output_format: Output format ("json" or "text")
+            log_format: Console log format ("json", "text", or "color")
+            debug: Enable debug mode with extra logging
+            save_screenshots: Save screenshots on errors
+            headless: Run browser in headless mode
         """
         self.workflow_type = workflow_type
         self.output_format = output_format
+        self.log_format = log_format
+        self.debug = debug
+        self.save_screenshots = save_screenshots
+        self.headless = headless
         self.workflow: Workflow | None = None
 
     def _get_workflow(self) -> Workflow:
         """Get workflow instance by type."""
         if self.workflow_type == "login":
-            return LoginWorkflow()
+            workflow = LoginWorkflow()
+            if self.debug:
+                workflow.debug = True
+            if self.save_screenshots:
+                workflow.save_screenshots = True
+            return workflow
         else:
             raise ValueError(f"Unknown workflow type: {self.workflow_type}")
 
@@ -60,7 +81,9 @@ class WorkflowRunner:
         # Setup logging
         if log_dir:
             setup_logger(
-                name=__name__, log_file=Path(log_dir) / f"{self.workflow_type}.log"
+                name=__name__,
+                log_file=Path(log_dir) / f"{self.workflow_type}.log",
+                log_format=self.log_format,
             )
 
         # Get workflow instance
@@ -186,6 +209,19 @@ Examples:
   python -m src.cli.workflow_runner login \\
     --input '{"url":"http://localhost:8000","username":"test","password":"pass"}' \\
     --log-dir data/logs
+
+  # Run with debug mode (verbose logging, screenshots on error)
+  python -m src.cli.workflow_runner login \\
+    --input '{"url":"http://localhost:8000","username":"test","password":"pass"}' \\
+    --debug \\
+    --save-screenshots \\
+    --headless false
+
+  # Run with colorized console logs
+  python -m src.cli.workflow_runner login \\
+    --input '{"url":"http://localhost:8000","username":"test","password":"pass"}' \\
+    --log-format color \\
+    --output-format text
         """,
     )
 
@@ -210,6 +246,34 @@ Examples:
         help="Directory to write logs to (default: data/logs)",
     )
 
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        help="Enable debug mode with verbose logging and element inspection",
+    )
+
+    parser.add_argument(
+        "--save-screenshots",
+        action="store_true",
+        default=False,
+        help="Save screenshots on errors (automatic with --debug)",
+    )
+
+    parser.add_argument(
+        "--headless",
+        type=lambda x: x.lower() in ("true", "yes", "1"),
+        default=True,
+        help="Run browser in headless mode (default: true, use 'false' to see browser)",
+    )
+
+    parser.add_argument(
+        "--log-format",
+        choices=["json", "text", "color"],
+        default="json",
+        help="Console log format (default: json)",
+    )
+
     args = parser.parse_args()
 
     try:
@@ -220,7 +284,14 @@ Examples:
         sys.exit(1)
 
     # Create runner and run workflow
-    runner = WorkflowRunner(args.workflow_type, args.output_format)
+    runner = WorkflowRunner(
+        args.workflow_type,
+        args.output_format,
+        args.log_format,
+        debug=args.debug,
+        save_screenshots=args.save_screenshots or args.debug,
+        headless=args.headless,
+    )
 
     # Ensure log directory exists
     if args.log_dir:

@@ -2,10 +2,11 @@
 
 import json
 import logging
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 
 class JSONFormatter(logging.Formatter):
@@ -47,11 +48,44 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_entry)
 
 
+class TextFormatter(logging.Formatter):
+    """Format logs as readable single-line text."""
+
+    def __init__(self, use_color: bool = False):
+        """Initialize formatter with optional ANSI colors."""
+        super().__init__()
+        self.use_color = use_color
+        self.level_colors = {
+            "DEBUG": "\033[36m",  # cyan
+            "INFO": "\033[32m",  # green
+            "WARNING": "\033[33m",  # yellow
+            "ERROR": "\033[31m",  # red
+            "CRITICAL": "\033[35m",  # magenta
+        }
+        self.reset = "\033[0m"
+
+    def _colorize(self, level: str) -> str:
+        """Apply ANSI color to level label if enabled."""
+        if not self.use_color:
+            return level
+        return f"{self.level_colors.get(level, '')}{level}{self.reset}"
+
+    def format(self, record: logging.LogRecord) -> str:
+        """Format log record as readable text line."""
+        timestamp = datetime.utcnow().strftime("%H:%M:%S")
+        level = self._colorize(record.levelname)
+        logger_name = record.name
+        message = record.getMessage()
+        return f"{timestamp} | {level:<8} | {logger_name} | {message}"
+
+
 def setup_logger(
     name: str,
     execution_id: Optional[str] = None,
     log_file: Optional[Path] = None,
-    log_level: int = logging.INFO) -> logging.Logger:
+    log_level: int = logging.INFO,
+    log_format: Literal["json", "text", "color"] | None = None,
+) -> logging.Logger:
     """
     Set up a structured JSON logger.
 
@@ -60,6 +94,8 @@ def setup_logger(
         execution_id: Execution ID for context (optional)
         log_file: File path to write logs to (optional)
         log_level: Log level (default INFO)
+        log_format: Console log format (json, text, color). If None, reads
+            WORKFLOW_LOG_FORMAT env var (default: json)
 
     Returns:
         Configured logger instance
@@ -70,18 +106,28 @@ def setup_logger(
     # Clear existing handlers
     logger.handlers.clear()
 
-    formatter = JSONFormatter(execution_id=execution_id)
+    effective_log_format = (
+        log_format or os.getenv("WORKFLOW_LOG_FORMAT", "json")
+    ).lower()
+    if effective_log_format not in {"json", "text", "color"}:
+        effective_log_format = "json"
+
+    json_formatter = JSONFormatter(execution_id=execution_id)
+    text_formatter = TextFormatter(use_color=(effective_log_format == "color"))
+    console_formatter = (
+        json_formatter if effective_log_format == "json" else text_formatter
+    )
 
     # Console handler (stderr for logs, stdout for data)
     console_handler = logging.StreamHandler(sys.stderr)
-    console_handler.setFormatter(formatter)
+    console_handler.setFormatter(console_formatter)
     logger.addHandler(console_handler)
 
     # File handler (if log_file specified)
     if log_file:
         log_file.parent.mkdir(parents=True, exist_ok=True)
         file_handler = logging.FileHandler(log_file)
-        file_handler.setFormatter(formatter)
+        file_handler.setFormatter(json_formatter)
         logger.addHandler(file_handler)
 
     return logger
@@ -92,7 +138,8 @@ def log_execution_event(
     event_type: str,
     message: str,
     context: Optional[dict[str, Any]] = None,
-    **extra_fields) -> None:
+    **extra_fields,
+) -> None:
     """
     Log an execution event with structured context.
 
@@ -115,6 +162,7 @@ def log_execution_event(
         lineno=0,
         msg=message,
         args=(),
-        exc_info=None)
+        exc_info=None,
+    )
     record.extra_fields = fields
     logger.handle(record)
