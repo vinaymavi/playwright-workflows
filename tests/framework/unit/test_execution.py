@@ -1,5 +1,7 @@
 """Unit tests for execution module."""
 
+import shutil
+
 import pytest
 
 from src.framework.errors import WorkflowStateError
@@ -368,3 +370,136 @@ class TestExecution:
         execution.pause(checkpoint)
         state_after = execution.get_state()
         assert state_before == state_after == ExecutionState.PAUSED
+
+    def test_temp_dir_created(self, tmp_path):
+        """Test that temp directory is created on execution init."""
+        execution = Execution(
+            execution_id="exec-001",
+            temp_base_dir=tmp_path / "temp",
+        )
+        assert execution.temp_dir.exists()
+        assert execution.temp_dir.parent == tmp_path / "temp"
+        assert execution.temp_dir.name == "exec-001"
+
+    def test_temp_dir_isolation(self, tmp_path):
+        """Test that each execution has isolated temp directory."""
+        exec1 = Execution(
+            execution_id="exec-001",
+            temp_base_dir=tmp_path / "temp",
+        )
+        exec2 = Execution(
+            execution_id="exec-002",
+            temp_base_dir=tmp_path / "temp",
+        )
+        
+        # Create different files in each temp dir
+        (exec1.temp_dir / "file1.txt").write_text("exec1")
+        (exec2.temp_dir / "file2.txt").write_text("exec2")
+        
+        assert (exec1.temp_dir / "file1.txt").exists()
+        assert (exec2.temp_dir / "file2.txt").exists()
+        assert (exec1.temp_dir / "file2.txt").exists() is False
+        assert (exec2.temp_dir / "file1.txt").exists() is False
+
+    def test_cleanup_removes_temp_dir(self, tmp_path):
+        """Test that cleanup removes the temp directory."""
+        execution = Execution(
+            execution_id="exec-001",
+            temp_base_dir=tmp_path / "temp",
+        )
+        temp_path = execution.temp_dir
+        
+        # Create a file in temp dir
+        (temp_path / "test.txt").write_text("test data")
+        assert temp_path.exists()
+        
+        # Start, complete execution and cleanup
+        execution.start({})
+        execution.complete()
+        execution.cleanup()
+        
+        assert temp_path.exists() is False
+
+    def test_cleanup_removes_state_file_when_terminal(self, tmp_path):
+        """Test that cleanup removes state file for terminal executions."""
+        execution = Execution(
+            execution_id="exec-001",
+            data_dir=tmp_path / "executions",
+            temp_base_dir=tmp_path / "temp",
+        )
+        
+        # Start and complete execution
+        execution.start({})
+        execution.complete()
+        state_file = execution.state_file
+        assert state_file.exists()
+        
+        # Cleanup should remove state file
+        execution.cleanup()
+        assert state_file.exists() is False
+
+    def test_cleanup_preserves_state_file_when_running(self, tmp_path):
+        """Test that cleanup preserves state file for running executions."""
+        execution = Execution(
+            execution_id="exec-001",
+            data_dir=tmp_path / "executions",
+            temp_base_dir=tmp_path / "temp",
+        )
+        
+        # Start execution (but don't complete)
+        execution.start({})
+        state_file = execution.state_file
+        assert state_file.exists()
+        
+        # Cleanup running execution should only clean temp dir
+        execution.cleanup()
+        assert state_file.exists()
+        assert execution.temp_dir.exists() is False
+
+    def test_cleanup_handles_missing_temp_dir(self, tmp_path):
+        """Test that cleanup handles gracefully if temp dir already removed."""
+        execution = Execution(
+            execution_id="exec-001",
+            data_dir=tmp_path / "executions",
+            temp_base_dir=tmp_path / "temp",
+        )
+        
+        # Manually remove temp dir
+        shutil.rmtree(execution.temp_dir)
+        
+        # Cleanup should not raise error
+        execution.start({})
+        execution.complete()
+        execution.cleanup()  # Should not raise
+        
+        assert execution.state_file.exists() is False
+
+    def test_concurrent_temp_dir_safety(self, tmp_path):
+        """Test that concurrent executions don't interfere with temp dirs."""
+        # Create 5 concurrent executions
+        executions = [
+            Execution(
+                execution_id=f"exec-{i:03d}",
+                temp_base_dir=tmp_path / "temp",
+            )
+            for i in range(5)
+        ]
+        
+        # Write unique data to each
+        for i, execution in enumerate(executions):
+            (execution.temp_dir / "data.txt").write_text(f"data-{i}")
+        
+        # Verify isolation
+        for i, execution in enumerate(executions):
+            data = (execution.temp_dir / "data.txt").read_text()
+            assert data == f"data-{i}"
+        
+        # Clean up all
+        for execution in executions:
+            execution.start({})
+            execution.complete()
+            execution.cleanup()
+        
+        # Verify all cleaned
+        for execution in executions:
+            assert execution.temp_dir.exists() is False

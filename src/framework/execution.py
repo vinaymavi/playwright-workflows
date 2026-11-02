@@ -3,10 +3,14 @@
 Manages execution lifecycle and state persistence for workflow runs.
 Provides state transitions (pending → running → paused → completed/failed)
 and JSON-based state storage with file locking for concurrent safety.
+
+Includes execution-scoped resource management with isolated temp directories
+for concurrent execution safety.
 """
 
 import asyncio
 import json
+import shutil
 import uuid
 from datetime import datetime
 from enum import Enum
@@ -110,6 +114,7 @@ class Execution:
         base_url: str = "",
         data_dir: Optional[Path] = None,
         max_retries: int = 3,
+        temp_base_dir: Optional[Path] = None,
     ):
         """Initialize execution with optional ID and configuration.
 
@@ -118,6 +123,7 @@ class Execution:
             base_url: Base URL for workflow navigation
             data_dir: Directory for persisting state (defaults to data/executions/)
             max_retries: Max automatic retries per step
+            temp_base_dir: Base directory for execution-scoped temp directories
         """
         self.execution_id = execution_id or str(uuid.uuid4())
         self.base_url = base_url
@@ -127,6 +133,15 @@ class Execution:
             data_dir = Path(__file__).parent.parent.parent / "data" / "executions"
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
+
+        if temp_base_dir is None:
+            temp_base_dir = Path(__file__).parent.parent.parent / "data" / "temp"
+        self.temp_base_dir = Path(temp_base_dir)
+        self.temp_base_dir.mkdir(parents=True, exist_ok=True)
+
+        # Execution-scoped temp directory for artifacts, logs, etc.
+        self.temp_dir = self.temp_base_dir / self.execution_id
+        self.temp_dir.mkdir(parents=True, exist_ok=True)
 
         self.state_file = self.data_dir / f"{self.execution_id}.json"
         self._state: ExecutionStateData = ExecutionStateData(
@@ -352,6 +367,35 @@ class Execution:
             ExecutionState.FAILED,
             ExecutionState.CANCELLED,
         )
+
+    def cleanup(self) -> None:
+        """Clean up execution-scoped resources.
+        
+        Removes the temp directory and all its contents.
+        Called when execution completes or is cancelled.
+        
+        Raises:
+            OSError: If cleanup fails (but does not prevent cleanup of state file)
+        """
+        cleanup_errors = []
+        
+        # Clean up temp directory
+        if self.temp_dir.exists():
+            try:
+                shutil.rmtree(self.temp_dir)
+            except Exception as e:
+                cleanup_errors.append(f"Failed to clean temp_dir {self.temp_dir}: {e}")
+        
+        # Clean up state file if terminal
+        if self.is_terminal():
+            if self.state_file.exists():
+                try:
+                    self.state_file.unlink()
+                except Exception as e:
+                    cleanup_errors.append(f"Failed to remove state_file {self.state_file}: {e}")
+        
+        if cleanup_errors:
+            raise OSError(f"Cleanup had errors: {'; '.join(cleanup_errors)}")
 
     def to_dict(self) -> dict[str, Any]:
         """Export execution state as dictionary."""
