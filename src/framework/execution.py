@@ -156,7 +156,7 @@ class Execution:
 
     def set_checkpoint_decision(self, decision: CheckpointDecision) -> None:
         """Called by MCP server when agent provides checkpoint decision.
-        
+
         Args:
             decision: The agent's decision response
         """
@@ -370,30 +370,32 @@ class Execution:
 
     def cleanup(self) -> None:
         """Clean up execution-scoped resources.
-        
+
         Removes the temp directory and all its contents.
         Called when execution completes or is cancelled.
-        
+
         Raises:
             OSError: If cleanup fails (but does not prevent cleanup of state file)
         """
         cleanup_errors = []
-        
+
         # Clean up temp directory
         if self.temp_dir.exists():
             try:
                 shutil.rmtree(self.temp_dir)
             except Exception as e:
                 cleanup_errors.append(f"Failed to clean temp_dir {self.temp_dir}: {e}")
-        
+
         # Clean up state file if terminal
         if self.is_terminal():
             if self.state_file.exists():
                 try:
                     self.state_file.unlink()
                 except Exception as e:
-                    cleanup_errors.append(f"Failed to remove state_file {self.state_file}: {e}")
-        
+                    cleanup_errors.append(
+                        f"Failed to remove state_file {self.state_file}: {e}"
+                    )
+
         if cleanup_errors:
             raise OSError(f"Cleanup had errors: {'; '.join(cleanup_errors)}")
 
