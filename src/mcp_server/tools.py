@@ -28,7 +28,11 @@ _active_executions: dict[str, Any] = {}
 
 # Data directory for execution state storage (configurable via environment variable)
 _DATA_DIR_ENV = os.getenv("WORKFLOW_DATA_DIR")
-DATA_DIR = Path(_DATA_DIR_ENV) if _DATA_DIR_ENV else Path(__file__).parent.parent.parent / "data" / "executions"
+DATA_DIR = (
+    Path(_DATA_DIR_ENV)
+    if _DATA_DIR_ENV
+    else Path(__file__).parent.parent.parent / "data" / "executions"
+)
 
 
 def register_workflow(workflow_type: str, workflow_class: Any) -> None:
@@ -52,7 +56,8 @@ async def start_workflow_impl(
     workflow_type: str,
     input_params: Optional[dict[str, Any]] = None,
     max_retries: int = 3,
-    timeout_seconds: int = 3600) -> dict[str, Any]:
+    timeout_seconds: int = 3600,
+) -> dict[str, Any]:
     """Start a new workflow execution.
 
     Args:
@@ -110,7 +115,9 @@ async def start_workflow_impl(
         workflow_class = _workflow_registry[workflow_type]
 
         # Start workflow in background task (don't await)
-        asyncio.create_task(_execute_workflow(execution_id, workflow_class, input_params or {}))
+        asyncio.create_task(
+            _execute_workflow(execution_id, workflow_class, input_params or {})
+        )
 
         logger.info(
             "Started workflow execution",
@@ -118,7 +125,8 @@ async def start_workflow_impl(
                 "execution_id": execution_id,
                 "workflow_type": workflow_type,
                 "event": "workflow_started",
-            })
+            },
+        )
 
         return {
             "execution_id": execution_id,
@@ -136,7 +144,8 @@ async def resolve_checkpoint_impl(
     execution_id: str,
     checkpoint_id: str,
     decision: dict[str, Any],
-    agent_id: str = "unknown") -> dict[str, Any]:
+    agent_id: str = "unknown",
+) -> dict[str, Any]:
     """Resolve a checkpoint by providing agent decision.
 
     Args:
@@ -193,16 +202,16 @@ async def resolve_checkpoint_impl(
         try:
             # Try to import and notify the execution
             from ..framework.execution import Execution
-            
+
             # Look for execution in active executions registry
             # Note: This relies on the Execution object being registered when workflow starts
             # For now, we try to get it from _active_executions if it was stored as an object
-            
+
             # If _active_executions contains Execution objects (not just state dicts)
             if execution_id in _active_executions:
                 exec_obj = _active_executions[execution_id]
                 # Check if it's an Execution object (has set_checkpoint_decision method)
-                if hasattr(exec_obj, 'set_checkpoint_decision'):
+                if hasattr(exec_obj, "set_checkpoint_decision"):
                     checkpoint_decision = CheckpointDecision(**decision)
                     exec_obj.set_checkpoint_decision(checkpoint_decision)
                     logger.info(
@@ -210,12 +219,14 @@ async def resolve_checkpoint_impl(
                         extra={
                             "execution_id": execution_id,
                             "checkpoint_id": checkpoint_id,
-                        })
+                        },
+                    )
         except Exception as e:
             logger.warning(
                 f"Could not notify execution to resume: {e}. "
                 "Workflow will resume on next poll.",
-                extra={"execution_id": execution_id})
+                extra={"execution_id": execution_id},
+            )
 
         # Signal the workflow to resume (via event or queue)
         # This is handled by the workflow execution loop waiting on checkpoint resolution
@@ -226,7 +237,8 @@ async def resolve_checkpoint_impl(
                 "checkpoint_id": checkpoint_id,
                 "agent_id": agent_id,
                 "event": "checkpoint_resolved",
-            })
+            },
+        )
 
         return {
             "execution_id": execution_id,
@@ -281,7 +293,9 @@ async def get_execution_status_impl(execution_id: str) -> dict[str, Any]:
                 }
                 break
 
-        completed_steps = len([s for s in execution_state.get("steps", []) if s["status"] == "success"])
+        completed_steps = len(
+            [s for s in execution_state.get("steps", []) if s["status"] == "success"]
+        )
         total_steps = len(execution_state.get("steps", []))
 
         return {
@@ -307,7 +321,8 @@ async def get_execution_logs_impl(
     event_type: Optional[str] = None,
     level: Optional[str] = None,
     limit: int = 100,
-    offset: int = 0) -> dict[str, Any]:
+    offset: int = 0,
+) -> dict[str, Any]:
     """Retrieve structured execution logs with optional filtering.
 
     Args:
@@ -350,7 +365,11 @@ async def get_execution_logs_impl(
         # Add step logs
         for step in execution_state.get("steps", []):
             step_name = step.get("name", step.get("step_id", "unknown"))
-            timestamp = step.get("timestamp") or step.get("started_at") or step.get("created_at")
+            timestamp = (
+                step.get("timestamp")
+                or step.get("started_at")
+                or step.get("created_at")
+            )
             log_entry = {
                 "timestamp": timestamp,
                 "level": "info",
@@ -452,7 +471,7 @@ async def _execute_workflow(
     """
     try:
         from ..framework.execution import Execution
-        
+
         data_dir = get_data_dir()
         execution_file = data_dir / f"{execution_id}.json"
 
@@ -470,11 +489,11 @@ async def _execute_workflow(
         execution = Execution(
             execution_id=execution_id,
             base_url=execution_state.get("base_url", ""),
-            data_dir=data_dir
+            data_dir=data_dir,
         )
         execution._state.state = "running"
         execution._state.input_params = input_params
-        
+
         # Store Execution object in memory so resolve_checkpoint can find it
         _active_executions[execution_id] = execution
 
@@ -504,13 +523,14 @@ async def _execute_workflow(
             extra={
                 "execution_id": execution_id,
                 "event": "execution_completed",
-            })
+            },
+        )
 
         # Send completion notification
         notification_service = NotificationService()
         await notification_service.send_notification(
-            "execution_completed",
-            {"execution_id": execution_id, "result": result})
+            "execution_completed", {"execution_id": execution_id, "result": result}
+        )
 
     except Exception as e:
         logger.error(f"Workflow execution failed: {e}", exc_info=True)
@@ -534,14 +554,13 @@ async def _execute_workflow(
         # Send failure notification
         notification_service = NotificationService()
         await notification_service.send_notification(
-            "execution_failed",
-            {"execution_id": execution_id, "error": str(e)})
+            "execution_failed", {"execution_id": execution_id, "error": str(e)}
+        )
 
 
 async def list_executions_impl(
-    status: Optional[str] = None,
-    limit: int = 50,
-    offset: int = 0) -> dict[str, Any]:
+    status: Optional[str] = None, limit: int = 50, offset: int = 0
+) -> dict[str, Any]:
     """List workflow executions with optional status filtering.
 
     Args:
@@ -599,15 +618,17 @@ async def list_executions_impl(
                         }
                         break
 
-                executions.append({
-                    "execution_id": exec_state.get("execution_id"),
-                    "workflow_type": exec_state.get("workflow_type"),
-                    "status": exec_state.get("status"),
-                    "created_at": exec_state.get("created_at"),
-                    "started_at": exec_state.get("started_at"),
-                    "current_step": exec_state.get("current_step"),
-                    "pending_checkpoint": pending_checkpoint,
-                })
+                executions.append(
+                    {
+                        "execution_id": exec_state.get("execution_id"),
+                        "workflow_type": exec_state.get("workflow_type"),
+                        "status": exec_state.get("status"),
+                        "created_at": exec_state.get("created_at"),
+                        "started_at": exec_state.get("started_at"),
+                        "current_step": exec_state.get("current_step"),
+                        "pending_checkpoint": pending_checkpoint,
+                    }
+                )
             except (json.JSONDecodeError, IOError) as e:
                 logger.warning(f"Failed to read execution file {file_path}: {e}")
                 continue

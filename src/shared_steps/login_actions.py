@@ -36,7 +36,8 @@ class EnterCredentialsAction(Action):
         password_selector: str,
         username: str,
         password: str,
-        wait_ms: int = 5000) -> dict[str, Any]:
+        wait_ms: int = 5000,
+    ) -> dict[str, Any]:
         """Enter credentials into form.
 
         Args:
@@ -108,7 +109,8 @@ class SubmitLoginFormAction(Action):
         button_selector: str,
         wait_for_element: Optional[str] = None,
         wait_for_navigation: bool = True,
-        wait_ms: int = 10000) -> dict[str, Any]:
+        wait_ms: int = 10000,
+    ) -> dict[str, Any]:
         """Submit login form.
 
         Args:
@@ -141,9 +143,7 @@ class SubmitLoginFormAction(Action):
             # If specific element should appear, wait for it
             if wait_for_element:
                 await page.wait_for_selector(wait_for_element, timeout=wait_ms)
-                logger.debug(
-                    f"Login succeeded, element appeared: {wait_for_element}"
-                )
+                logger.debug(f"Login succeeded, element appeared: {wait_for_element}")
 
             return {
                 "button_clicked": button_selector,
@@ -180,7 +180,8 @@ class VerifyLoginSuccessAction(Action):
         url_contains: Optional[str] = None,
         element_selector: Optional[str] = None,
         page_title_contains: Optional[str] = None,
-        wait_ms: int = 10000) -> dict[str, Any]:
+        wait_ms: int = 10000,
+    ) -> dict[str, Any]:
         """Verify login success.
 
         Args:
@@ -200,16 +201,16 @@ class VerifyLoginSuccessAction(Action):
         page: Page = self.workflow_context.page
 
         # Verify at least one criterion is provided
-        verification_criteria = sum([
-            url_contains is not None,
-            element_selector is not None,
-            page_title_contains is not None,
-        ])
+        verification_criteria = sum(
+            [
+                url_contains is not None,
+                element_selector is not None,
+                page_title_contains is not None,
+            ]
+        )
 
         if verification_criteria == 0:
-            raise ValueError(
-                "At least one verification criterion must be provided"
-            )
+            raise ValueError("At least one verification criterion must be provided")
 
         verification_results = {}
 
@@ -222,8 +223,7 @@ class VerifyLoginSuccessAction(Action):
                     logger.debug(f"URL verification passed: {current_url}")
                 else:
                     error_msg = (
-                        f"URL doesn't contain '{url_contains}', "
-                        f"got '{current_url}'"
+                        f"URL doesn't contain '{url_contains}', got '{current_url}'"
                     )
                     logger.warning(error_msg)
                     raise PermanentError(self.name, error_msg)
@@ -242,8 +242,7 @@ class VerifyLoginSuccessAction(Action):
                     logger.debug(f"Title verification passed: {title}")
                 else:
                     error_msg = (
-                        f"Title doesn't contain '{page_title_contains}', "
-                        f"got '{title}'"
+                        f"Title doesn't contain '{page_title_contains}', got '{title}'"
                     )
                     logger.warning(error_msg)
                     raise PermanentError(self.name, error_msg)
@@ -286,7 +285,8 @@ class HandleLoginErrorAction(Action):
         self,
         error_selector: str,
         error_messages: dict[str, list] = None,
-        wait_ms: int = 5000) -> dict[str, Any]:
+        wait_ms: int = 5000,
+    ) -> dict[str, Any]:
         """Check for and handle login errors.
 
         Args:
@@ -342,12 +342,10 @@ class HandleLoginErrorAction(Action):
             # Permanent errors that shouldn't be retried
             if error_type == "invalid_credentials":
                 raise PermanentError(
-                    self.name,
-                    f"Login failed with invalid credentials: {error_text}")
+                    self.name, f"Login failed with invalid credentials: {error_text}"
+                )
             elif error_type == "account_locked":
-                raise PermanentError(
-                    self.name,
-                    f"Account is locked: {error_text}")
+                raise PermanentError(self.name, f"Account is locked: {error_text}")
 
             return {
                 "error_found": True,

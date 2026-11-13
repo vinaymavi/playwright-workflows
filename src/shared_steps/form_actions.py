@@ -29,7 +29,9 @@ class FillFormAction(Action):
         })
     """
 
-    async def execute(self, fields: dict[str, str], wait_ms: int = 5000) -> dict[str, Any]:
+    async def execute(
+        self, fields: dict[str, str], wait_ms: int = 5000
+    ) -> dict[str, Any]:
         """Fill form fields.
 
         Args:
@@ -99,7 +101,8 @@ class SelectFromDropdownAction(Action):
         value: Optional[str] = None,
         label: Optional[str] = None,
         index: Optional[int] = None,
-        wait_ms: int = 5000) -> dict[str, Any]:
+        wait_ms: int = 5000,
+    ) -> dict[str, Any]:
         """Select an option from a dropdown.
 
         Args:
@@ -120,11 +123,11 @@ class SelectFromDropdownAction(Action):
         page: Page = self.workflow_context.page
 
         # Validate that exactly one selection method is provided
-        selection_methods = sum([value is not None, label is not None, index is not None])
+        selection_methods = sum(
+            [value is not None, label is not None, index is not None]
+        )
         if selection_methods != 1:
-            raise ValueError(
-                "Exactly one of value, label, or index must be provided"
-            )
+            raise ValueError("Exactly one of value, label, or index must be provided")
 
         try:
             await page.wait_for_selector(selector, timeout=wait_ms)
@@ -173,7 +176,8 @@ class ClickElementAction(Action):
         selector: str,
         double_click: bool = False,
         wait_for_navigation: bool = False,
-        wait_ms: int = 5000) -> dict[str, Any]:
+        wait_ms: int = 5000,
+    ) -> dict[str, Any]:
         """Click an element.
 
         Args:
@@ -234,9 +238,8 @@ class ValidateFormFieldAction(Action):
     """
 
     async def execute(
-        self,
-        fields: dict[str, Optional[str]],
-        wait_ms: int = 5000) -> dict[str, Any]:
+        self, fields: dict[str, Optional[str]], wait_ms: int = 5000
+    ) -> dict[str, Any]:
         """Validate form fields.
 
         Args:
@@ -302,10 +305,8 @@ class CheckCheckboxAction(Action):
     """
 
     async def execute(
-        self,
-        selector: str,
-        checked: bool = True,
-        wait_ms: int = 5000) -> dict[str, Any]:
+        self, selector: str, checked: bool = True, wait_ms: int = 5000
+    ) -> dict[str, Any]:
         """Check or uncheck a checkbox.
 
         Args:
