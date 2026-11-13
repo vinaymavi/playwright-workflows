@@ -7,6 +7,12 @@ from prefect.utilities.annotations import quote
 from task.task_playwright import screenshot as page_screenshot
 
 
+def select_with_postback(page: Page, selector: str, label: str) -> None:
+    """Select an option and wait for the resulting page navigation."""
+    with page.expect_navigation(wait_until="load"):
+        page.locator(selector).select_option(label=label)
+
+
 def interact(
     page: Page,
     action: Callable[[], object],
