@@ -1,8 +1,7 @@
 import typer
+from flow.flow_challan import flow_challan
 
 app = typer.Typer()
-
-from flow.flow_challan import flow_challan
 
 WORKFLOWS: dict[str, str] = {}
 WORKFLOWS["challan"] = "flow_challan"
@@ -14,11 +13,33 @@ def hello(name: str) -> None:
 
 
 @app.command()
-def workflow(name: str) -> None:
+def workflow(
+    name: str,
+    department: str = typer.Option(None, prompt="Department (exact dropdown label)"),
+    division: str = typer.Option(None, prompt="Division (exact dropdown label)"),
+    treasury: str = typer.Option(None, prompt="Treasury (exact dropdown label)"),
+    depositor_name: str = typer.Option(None, prompt="Depositor name"),
+    amount: str = typer.Option(None, prompt="Amount for second head"),
+    block_no: str = "",
+    locality: str = "",
+    city: str = "",
+    remarks: str = "",
+) -> None:
     if name in WORKFLOWS:
         print(f"Running workflow {WORKFLOWS[name]} from playwright-workflows!")
         if name == "challan":
-            flow_challan()
+            captcha_path = flow_challan(
+                department=department,
+                division=division,
+                treasury=treasury,
+                remarks=remarks,
+                depositor_name=depositor_name,
+                block_no=block_no,
+                locality=locality,
+                city=city,
+                amount=amount,
+            )
+            print(f"CAPTCHA image saved to {captcha_path}")
     else:
         print(f"Workflow {name} not found in playwright-workflows!")
 

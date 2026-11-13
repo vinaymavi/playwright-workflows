@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "playwright>=1.65.1",
     "prefect>=3.9.2",
     "rich>=15.0.0",
     "typer>=0.29.1",
