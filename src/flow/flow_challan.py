@@ -1,5 +1,4 @@
 from prefect import flow
-from browser.browser import browser
 from task.task_challan import (
     capture_captcha,
     goto_pay_without_registration,
@@ -10,6 +9,7 @@ from task.task_challan import (
 from task.task_playwright import screenshot as page_screenshot
 from prefect.utilities.annotations import quote
 from util.artifacts import new_artifact_path
+from util.playwright import close_page, get_page
 
 
 @flow(log_prints=True)
@@ -26,7 +26,7 @@ def flow_challan(
     captcha_path: str | None = None,
     pause: bool = False,
 ) -> str:
-    page = browser.get_page()
+    page = get_page()
     quote_page = quote(page)
     try:
         goto_pay_without_registration(quote_page)
@@ -56,4 +56,4 @@ def flow_challan(
             print(f"Could not capture failure screenshot: {exc}")
         raise
     finally:
-        page.close()
+        close_page(page)

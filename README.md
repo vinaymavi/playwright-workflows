@@ -4,15 +4,15 @@ The browser runs headlessly by default. To show Chromium and enable Playwright
 Inspector, set `PWDEBUG=1` before starting Python (the browser starts at import):
 
 ```bash
-PWDEBUG=1 uv run python src/cli/cli.py workflow challan --pause --trace
+DEBUG_MODE=1 PWDEBUG=1 uv run python src/cli/cli.py workflow challan
 ```
 
-Provide the usual workflow options or answer the prompts. `--pause` opens the
-Inspector after the form loads; use its controls to step through the actions.
-`--trace` saves a trace in `data/artifacts/`. Open it with:
+Provide the usual workflow options or answer the prompts. `PWDEBUG=1` enables
+the Playwright Inspector; `DEBUG_MODE=1` records a trace in `data/artifacts/`
+and enables interaction screenshots. Open the printed trace path with:
 
 ```bash
-uv run playwright show-trace data/artifacts/<flow-run-name>-<flow-run-id>-trace.zip
+uv run playwright show-trace data/artifacts/<trace-filename>.zip
 ```
 
 Failures also save a screenshot in `data/artifacts/` when possible. The page
