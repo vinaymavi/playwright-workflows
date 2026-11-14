@@ -1,6 +1,9 @@
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 from prefect import get_run_logger, task
+from prefect.events import emit_event
 from pathlib import Path
+from time import monotonic
+from urllib.parse import urlparse
 import pytesseract
 from util.artifacts import upload_file_to_gcs
 from util.email import send_email
@@ -11,6 +14,79 @@ from util.playwright import capture_element
 
 class RajkoshSubmissionError(RuntimeError):
     """The submission returned a Rajkosh error page."""
+
+
+def wait_for_upi_result(page: Page) -> None:
+    """Keep the SBI page alive until its status changes or countdown ends."""
+    logger = get_run_logger()
+    initial_url = page.url
+    deadline = monotonic() + 420  # Fallback if SBI does not expose its countdown.
+    initial_status = None
+    logger.info("Waiting on the SBI payment page for payment or countdown expiry")
+
+    while monotonic() < deadline:
+        if page.url != initial_url:
+            try:
+                page.wait_for_load_state("load", timeout=15000)
+            except PlaywrightTimeoutError:
+                logger.warning("Payment page navigated, but the destination is still loading")
+            logger.info("Payment page navigated to %s", page.url)
+            if page.get_by_label("Redirect to Merchant site").count():
+                status = page.locator("p.lblGryText").filter(
+                    has_text="Transaction"
+                ).locator("xpath=following-sibling::p[1]")
+                if status.count():
+                    logger.info("SBI transaction status: %s", status.first.inner_text().strip())
+                logger.info("Waiting for SBI to return the browser to the merchant")
+                try:
+                    page.wait_for_url(
+                        lambda url: urlparse(url).hostname != "merchant.sbi.bank.in",
+                        wait_until="load",
+                        timeout=60000,
+                    )
+                    logger.info("SBI returned the browser to %s", page.url)
+                except PlaywrightTimeoutError:
+                    logger.warning("SBI did not return to the merchant within 60 seconds")
+            return
+
+        try:
+            state = page.evaluate("""() => {
+                const elements = [...document.querySelectorAll('body *')];
+                const label = elements.find(el => el.children.length === 0 &&
+                    el.textContent.trim().toLowerCase() === 'transaction status');
+                const value = label?.nextElementSibling || label?.parentElement?.nextElementSibling;
+                const timer = elements.find(el => el.children.length === 0 &&
+                    /^\\s*\\d{1,2}:\\d{2}\\s*(?:mins?)?\\s*$/i.test(el.textContent));
+                return {status: value?.innerText?.trim() || null,
+                        timer: timer?.textContent?.trim() || null};
+            }""")
+        except Exception:
+            # Navigations temporarily destroy the execution context.
+            if page.is_closed():
+                logger.warning("SBI payment page was closed before a result was observed")
+                return
+            page.wait_for_timeout(1000)
+            continue
+
+        status = state["status"]
+        if status:
+            if initial_status is None:
+                initial_status = status
+                logger.info("Initial SBI transaction status: %s", status)
+                if any(word in status.lower() for word in ("paid", "completed", "failed", "expired")):
+                    logger.info("SBI transaction is already in a terminal state: %s", status)
+                    return
+            elif status != initial_status:
+                logger.info("SBI transaction status changed: %s", status)
+                return
+        if state["timer"]:
+            minutes, seconds = state["timer"].split()[0].split(":")
+            if int(minutes) == 0 and int(seconds) == 0:
+                logger.info("SBI payment countdown expired")
+                return
+        page.wait_for_timeout(1000)
+
+    logger.warning("Stopped waiting after seven minutes; check the payment status on Rajkosh")
 
 
 @task(log_prints=True)
@@ -92,6 +168,22 @@ def prepare_upi_payment(page: Page, amount: str, recipient: str = "vinaymavi@gma
     if not challan_number:
         raise RuntimeError("Challan number is missing from the confirmation page")
     print(f"Challan number: {challan_number}")
+    # The challan already exists at this point. Do not retry payment creation if
+    # event delivery fails; that could create another challan.
+    try:
+        event = emit_event(
+            event="rajkosh.challan.created",
+            resource={"prefect.resource.id": f"rajkosh.challan.{challan_number}"},
+            payload={"challan_number": challan_number},
+        )
+        if event is None:
+            raise RuntimeError("Prefect event emission is disabled")
+        get_run_logger().info("Emitted challan-created event for %s", challan_number)
+    except Exception:
+        get_run_logger().exception(
+            "Could not emit challan-created event for %s; schedule the lookup manually",
+            challan_number,
+        )
     page.locator("#btnProceed").click()
     page.locator('a[onclick="paySubmitUPI(\'UPI\')"]:visible').last.dispatch_event("click")
     page.locator("#Go").click()
@@ -116,6 +208,11 @@ def prepare_upi_payment(page: Page, amount: str, recipient: str = "vinaymavi@gma
         logger.info("UPI QR uploaded; Prefect artifact ID: %s", artifact_id)
     except Exception:
         logger.warning("UPI QR upload failed; local file remains at %s", path, exc_info=True)
+    try:
+        wait_for_upi_result(page)
+    except Exception:
+        # Retrying the full flow after a challan is created can create another one.
+        logger.exception("Could not observe the SBI payment result for challan %s", challan_number)
     return path
 
 

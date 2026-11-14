@@ -33,3 +33,31 @@ recipient is `vinaymavi@gmail.com`; override it with `--recipient`. The default
 sender is `onboarding@resend.dev` for testing; use `--sender` with an address on
 a verified Resend domain when appropriate. A printed copy may represent a
 pending transaction; check its payment status rather than assuming it is paid.
+
+## Automatically look up created challans
+
+With the Prefect server running (or connected to Prefect Cloud), register the
+deployments and Automation once, using an existing process work pool:
+
+```bash
+uv run python scripts/deploy_challan_automations.py <work-pool-name>
+```
+
+Run a Prefect worker for that pool to execute the scheduled runs:
+
+```bash
+uv run prefect worker start --pool <work-pool-name>
+```
+
+The worker must run on a machine with access to this project at the same path,
+its dependencies, Playwright Chromium, and the Prefect blocks used by the manual
+lookup. The deployment script exits after registration; it does not run a server.
+When the generation flow finds a challan number, it emits a Prefect event. The
+Automation starts the scheduler, which schedules the lookup two minutes later.
+The lookup uploads the PDF and emails the default recipient. A repeated event
+for the same challan uses the same idempotency key and does not create another
+lookup run. Prefect must be available when the event is emitted; if emission
+fails, the payment flow logs the challan number for a manual lookup.
+
+The delay does not confirm payment. The emailed challan may still show a pending
+transaction; this automation does not poll for a later payment status.
