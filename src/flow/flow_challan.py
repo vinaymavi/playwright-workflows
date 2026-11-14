@@ -4,6 +4,7 @@ from task.task_challan import (
     goto_pay_without_registration,
     fill_amount_and_calculate_total,
     fill_challan_details,
+    solve_and_submit_captcha,
 )
 
 from task.task_playwright import screenshot as page_screenshot
@@ -23,8 +24,7 @@ def flow_challan(
     locality: str,
     city: str,
     amount: str,
-    captcha_path: str | None = None,
-    pause: bool = False,
+    max_retries: int = 2,
 ) -> str:
     page = get_page()
     quote_page = quote(page)
@@ -43,10 +43,11 @@ def flow_challan(
             locality,
             city,
         )
+
         fill_amount_and_calculate_total(quote_page, amount)
-        if captcha_path is None:
-            captcha_path = str(new_artifact_path("captcha"))
-        return capture_captcha(quote_page, captcha_path)
+
+        captcha_path = capture_captcha(quote_page, str(new_artifact_path("captcha")))
+        return solve_and_submit_captcha(quote_page, captcha_path, max_retries)
     except Exception:
         try:
             screenshot = new_artifact_path("error")

@@ -2,6 +2,8 @@ from playwright.sync_api import Page
 from prefect import task
 from pathlib import Path
 from functools import partial
+import pytesseract
+from util.artifacts import new_artifact_path
 from util.playwright import interact as interact_with_page
 from util.playwright import select_with_postback
 
@@ -49,6 +51,53 @@ def capture_captcha(page: Page, path: str) -> str:
     output = Path(path).resolve()
     page.locator("#imgCaptcha").screenshot(path=output)
     return str(output)
+
+
+@task(log_prints=True, retries=0)
+def solve_and_submit_captcha(
+    page: Page, captcha_path: str, max_retries: int = 2
+) -> str:
+    """Submit an OCR reading; retry only an explicit incorrect-CAPTCHA alert."""
+    if max_retries < 0:
+        raise ValueError("max_retries must be zero or greater")
+
+    alerts: list[str] = []
+
+    def handle_dialog(dialog) -> None:
+        alerts.append(dialog.message)
+        dialog.accept()
+
+    page.on("dialog", handle_dialog)
+    try:
+        for attempt in range(max_retries + 1):
+            if attempt:
+                with page.expect_navigation(wait_until="load"):
+                    page.locator("#btnRefresh").click()
+                captcha_path = str(new_artifact_path("captcha"))
+                page.locator("#imgCaptcha").screenshot(path=captcha_path)
+
+            text = pytesseract.image_to_string(captcha_path, config="--psm 7").strip()
+            if not text:
+                raise ValueError("OCR could not read the CAPTCHA image")
+            page.locator("#txtVerify").fill(text)
+            alerts.clear()
+            with page.expect_navigation(wait_until="load", timeout=30000):
+                page.locator("#btnSubmit").click()
+
+            if any("wrong captcha verification" in message.lower() for message in alerts):
+                if attempt == max_retries:
+                    raise RuntimeError("CAPTCHA verification failed after all attempts")
+                continue
+            if alerts:
+                raise RuntimeError(f"Unexpected site alert: {alerts[-1]}")
+            if "page error" in page.locator("body").inner_text().lower():
+                raise RuntimeError("Rajkosh returned an error page after submission")
+            if page.locator("#txtVerify").count():
+                raise RuntimeError("The form is still displayed; submission could not be verified")
+            return page.url
+        raise RuntimeError("CAPTCHA verification failed")
+    finally:
+        page.remove_listener("dialog", handle_dialog)
 
 
 @task(log_prints=True)

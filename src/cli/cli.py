@@ -24,11 +24,12 @@ def workflow(
     locality: str = "",
     city: str = "",
     remarks: str = "",
+    max_retries: int = typer.Option(2, min=0, help="Retries after an incorrect CAPTCHA."),
 ) -> None:
     if name in WORKFLOWS:
         print(f"Running workflow {WORKFLOWS[name]} from playwright-workflows!")
         if name == "challan":
-            captcha_path = flow_challan(
+            result_url = flow_challan(
                 department=department,
                 division=division,
                 treasury=treasury,
@@ -38,8 +39,9 @@ def workflow(
                 locality=locality,
                 city=city,
                 amount=amount,
+                max_retries=max_retries,
             )
-            print(f"CAPTCHA image saved to {captcha_path}")
+            print(f"Submission response URL: {result_url}")
     else:
         print(f"Workflow {name} not found in playwright-workflows!")
 
