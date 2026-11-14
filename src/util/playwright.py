@@ -5,10 +5,11 @@ from weakref import WeakKeyDictionary
 
 from playwright.sync_api import Page
 from pathlib import Path
+from prefect import get_run_logger
 from prefect.utilities.annotations import quote
 
 from task.task_playwright import screenshot as page_screenshot
-from util.artifacts import new_artifact_path
+from util.artifacts import new_artifact_path, upload_file_to_gcs
 
 
 _traced_pages: WeakKeyDictionary[Page, bool] = WeakKeyDictionary()
@@ -40,9 +41,15 @@ def close_page(page: Page) -> None:
     """Save an active trace and close the page even if saving fails."""
     try:
         if _traced_pages.pop(page, False):
+            logger = get_run_logger()
             path = new_artifact_path("trace", "zip")
             page.context.tracing.stop(path=path)
-            print(f"Trace saved to {path.resolve()}")
+            logger.info("Trace saved to %s", path.resolve())
+            try:
+                artifact_id = upload_file_to_gcs(path, key="challan-trace")
+                logger.info("Trace uploaded; Prefect artifact ID: %s", artifact_id)
+            except Exception:
+                logger.warning("Trace upload failed; local file remains at %s", path.resolve(), exc_info=True)
     finally:
         page.close()
 

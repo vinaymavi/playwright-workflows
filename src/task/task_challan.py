@@ -1,7 +1,8 @@
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
-from prefect import task
+from prefect import get_run_logger, task
 from pathlib import Path
 import pytesseract
+from util.artifacts import upload_file_to_gcs
 from util.playwright import select_with_postback
 from util.playwright import capture_element
 
@@ -93,7 +94,13 @@ def prepare_upi_payment(page: Page) -> str:
     page.locator('a[onclick="paySubmitUPI(\'UPI\')"]:visible').last.dispatch_event("click")
     page.locator("#Go").click()
     path = capture_element(page, "#qrcodeImg", "upi-qr")
-    print(f"UPI QR code saved to {path}")
+    logger = get_run_logger()
+    logger.info("UPI QR code saved to %s", path)
+    try:
+        artifact_id = upload_file_to_gcs(path, key="challan-upi-qr")
+        logger.info("UPI QR uploaded; Prefect artifact ID: %s", artifact_id)
+    except Exception:
+        logger.warning("UPI QR upload failed; local file remains at %s", path, exc_info=True)
     return path
 
 
