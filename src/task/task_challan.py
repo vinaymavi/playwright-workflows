@@ -1,9 +1,7 @@
 from playwright.sync_api import Page, TimeoutError as PlaywrightTimeoutError
 from prefect import task
 from pathlib import Path
-from functools import partial
 import pytesseract
-from util.playwright import interact as interact_with_page
 from util.playwright import select_with_postback
 from util.playwright import capture_element
 
@@ -25,28 +23,21 @@ def fill_challan_details(
     city: str,
 ) -> None:
     """Fill the challan fields using the dropdowns' visible labels."""
-    interact = partial(interact_with_page, page)
-
-    interact(
-        lambda: select_with_postback(page, "#ddlDepartment", department), "department"
-    )
-    interact(lambda: select_with_postback(page, "#ddlDivision", division), "division")
-    interact(
-        lambda: page.locator("#ddlDistrict").select_option(label=treasury), "treasury"
-    )
-    interact(lambda: page.locator("#txtRemarks").fill(remarks), "remarks")
-    interact(lambda: page.locator("#txtName").fill(depositor_name), "depositor-name")
-    interact(lambda: page.locator("#txtBlockNo").fill(block_no), "block-no")
-    interact(lambda: page.locator("#txtRoad").fill(locality), "locality")
-    interact(lambda: page.locator("#txtCity").fill(city), "city")
+    select_with_postback(page, "#ddlDepartment", department)
+    select_with_postback(page, "#ddlDivision", division)
+    page.locator("#ddlDistrict").select_option(label=treasury)
+    page.locator("#txtRemarks").fill(remarks)
+    page.locator("#txtName").fill(depositor_name)
+    page.locator("#txtBlockNo").fill(block_no)
+    page.locator("#txtRoad").fill(locality)
+    page.locator("#txtCity").fill(city)
 
 
 @task(log_prints=True)
 def fill_amount_and_calculate_total(page: Page, amount: str) -> None:
     """Fill the second head, which appears after choosing a department."""
-    interact = partial(interact_with_page, page)
-    interact(lambda: page.locator("#txtAmt2").fill(amount), "amount")
-    interact(lambda: page.locator("#cmdTotal").click(), "total")
+    page.locator("#txtAmt2").fill(amount)
+    page.locator("#cmdTotal").click()
 
 
 @task(log_prints=True)

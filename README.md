@@ -8,8 +8,8 @@ DEBUG_MODE=1 PWDEBUG=1 uv run python src/cli/cli.py workflow challan
 ```
 
 Provide the usual workflow options or answer the prompts. `PWDEBUG=1` enables
-the Playwright Inspector; `DEBUG_MODE=1` records a trace in `data/artifacts/`
-and enables interaction screenshots. Open the printed trace path with:
+the Playwright Inspector; `DEBUG_MODE=1` records a trace in `data/artifacts/`.
+Open the printed trace path with:
 
 ```bash
 uv run playwright show-trace data/artifacts/<trace-filename>.zip

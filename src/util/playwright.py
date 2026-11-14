@@ -1,4 +1,5 @@
 import os
+import warnings
 from collections.abc import Callable
 from weakref import WeakKeyDictionary
 
@@ -57,7 +58,12 @@ def interact(
     action: Callable[[], object],
     slug: str,
 ) -> None:
-    """Perform a form interaction and optionally capture its result."""
+    """Deprecated: use direct Playwright actions and a debug trace instead."""
+    warnings.warn(
+        "interact is deprecated; use direct Playwright actions and tracing",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     action()
     if os.getenv("DEBUG_MODE") == "1":
         page_screenshot(quote(page), slug=slug)
