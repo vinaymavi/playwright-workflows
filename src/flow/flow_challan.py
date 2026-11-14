@@ -5,6 +5,7 @@ from task.task_challan import (
     fill_amount_and_calculate_total,
     fill_challan_details,
     solve_and_submit_captcha,
+    prepare_upi_payment,
 )
 
 from task.task_playwright import screenshot as page_screenshot
@@ -13,7 +14,11 @@ from util.artifacts import new_artifact_path
 from util.playwright import close_page, get_page
 
 
-@flow(log_prints=True)
+# TODO: Make the workflow retry count configurable.
+WORKFLOW_RETRIES = 3
+
+
+@flow(log_prints=True, retries=WORKFLOW_RETRIES)
 def flow_challan(
     department: str,
     division: str,
@@ -24,7 +29,6 @@ def flow_challan(
     locality: str,
     city: str,
     amount: str,
-    max_retries: int = 2,
 ) -> str:
     page = get_page()
     quote_page = quote(page)
@@ -47,7 +51,8 @@ def flow_challan(
         fill_amount_and_calculate_total(quote_page, amount)
 
         captcha_path = capture_captcha(quote_page, str(new_artifact_path("captcha")))
-        return solve_and_submit_captcha(quote_page, captcha_path, max_retries)
+        solve_and_submit_captcha(quote_page, captcha_path)
+        return prepare_upi_payment(quote_page)
     except Exception:
         try:
             screenshot = new_artifact_path("error")

@@ -3,6 +3,7 @@ from collections.abc import Callable
 from weakref import WeakKeyDictionary
 
 from playwright.sync_api import Page
+from pathlib import Path
 from prefect.utilities.annotations import quote
 
 from task.task_playwright import screenshot as page_screenshot
@@ -10,6 +11,13 @@ from util.artifacts import new_artifact_path
 
 
 _traced_pages: WeakKeyDictionary[Page, bool] = WeakKeyDictionary()
+
+
+def capture_element(page: Page, selector: str, slug: str) -> str:
+    """Save a screenshot of one page element and return its path."""
+    path = new_artifact_path(slug)
+    page.locator(selector).screenshot(path=path)
+    return str(Path(path).resolve())
 
 
 def get_page() -> Page:

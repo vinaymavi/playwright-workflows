@@ -24,7 +24,6 @@ def workflow(
     locality: str = "",
     city: str = "",
     remarks: str = "",
-    max_retries: int = typer.Option(2, min=0, help="Retries after an incorrect CAPTCHA."),
 ) -> None:
     if name in WORKFLOWS:
         print(f"Running workflow {WORKFLOWS[name]} from playwright-workflows!")
@@ -39,9 +38,8 @@ def workflow(
                 locality=locality,
                 city=city,
                 amount=amount,
-                max_retries=max_retries,
             )
-            print(f"Submission response URL: {result_url}")
+            print(f"UPI QR image saved to {result_url}")
     else:
         print(f"Workflow {name} not found in playwright-workflows!")
 
