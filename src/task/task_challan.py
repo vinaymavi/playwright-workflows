@@ -3,6 +3,8 @@ from prefect import get_run_logger, task
 from pathlib import Path
 import pytesseract
 from util.artifacts import upload_file_to_gcs
+from util.email import send_email
+from util.email_templates import challan_payment_email
 from util.playwright import select_with_postback
 from util.playwright import capture_element
 
@@ -83,7 +85,7 @@ def solve_and_submit_captcha(page: Page, captcha_path: str) -> str:
 
 
 @task(log_prints=True, retries=0)
-def prepare_upi_payment(page: Page) -> str:
+def prepare_upi_payment(page: Page, amount: str, recipient: str = "vinaymavi@gmail.com") -> str:
     """Proceed to the UPI QR code and save it for the user to scan."""
     page.locator("#popDiv").get_by_role("link", name="Close").click()
     challan_number = page.locator("#txtChallan_no").input_value().strip()
@@ -96,6 +98,19 @@ def prepare_upi_payment(page: Page) -> str:
     path = capture_element(page, "#qrcodeImg", "upi-qr")
     logger = get_run_logger()
     logger.info("UPI QR code saved to %s", path)
+    try:
+        response = send_email(
+            recipient=recipient,
+            sender="onboarding@resend.dev",
+            subject=f"Payment QR for challan {challan_number}",
+            html=challan_payment_email(amount, challan_number),
+            text=f"Challan {challan_number}: pay ₹{amount} using the attached UPI QR code. The QR may expire; payment is not yet confirmed.",
+            attachments=[path],
+            idempotency_key=f"challan-qr/{challan_number}",
+        )
+        logger.info("Resend accepted UPI QR email; message ID: %s", response.get("id", "not provided"))
+    except Exception:
+        logger.warning("UPI QR email failed; local image remains at %s", path, exc_info=True)
     try:
         artifact_id = upload_file_to_gcs(path, key="challan-upi-qr")
         logger.info("UPI QR uploaded; Prefect artifact ID: %s", artifact_id)

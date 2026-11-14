@@ -1286,6 +1286,7 @@ name = "playwright-workflows"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx" },
     { name = "playwright" },
     { name = "prefect" },
     { name = "prefect-gcp" },
@@ -1296,6 +1297,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "playwright", specifier = ">=1.65.1" },
     { name = "prefect", specifier = ">=3.9.2" },
     { name = "prefect-gcp", specifier = ">=0.6.22" },

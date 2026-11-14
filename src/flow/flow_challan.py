@@ -52,7 +52,7 @@ def flow_challan(
 
         captcha_path = capture_captcha(quote_page, str(new_artifact_path("captcha")))
         solve_and_submit_captcha(quote_page, captcha_path)
-        return prepare_upi_payment(quote_page)
+        return prepare_upi_payment(quote_page, amount)
     except Exception:
         try:
             screenshot = new_artifact_path("error")
