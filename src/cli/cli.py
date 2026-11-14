@@ -1,5 +1,6 @@
 import typer
 from flow.flow_challan import flow_challan
+from flow.flow_challan_lookup import flow_challan_lookup
 
 app = typer.Typer()
 
@@ -10,6 +11,17 @@ WORKFLOWS["challan"] = "flow_challan"
 @app.command()
 def hello(name: str) -> None:
     print(f"Hello {name} from playwright-workflows!")
+
+
+@app.command()
+def search_challan(
+    challan_number: str,
+    recipient: str = "vinaymavi@gmail.com",
+    sender: str = "onboarding@resend.dev",
+) -> None:
+    """Find a challan, upload its PDF, and email a copy."""
+    path = flow_challan_lookup(challan_number, recipient=recipient, sender=sender)
+    print(f"Challan PDF saved to {path}")
 
 
 @app.command()
